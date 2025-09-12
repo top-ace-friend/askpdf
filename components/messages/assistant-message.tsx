@@ -6,7 +6,6 @@ import { Clipboard, Check } from "lucide-react";
 import { FunctionComponent } from "react";
 import TooltipButton from "../ui/tooltip-button";
 import SourcesDialog from "../dialogs/sources-dialog";
-import Markdown from "markdown-to-jsx";
 import { CodeComponent } from "./code-component";
 import { MODEL_OPTIONS } from "@constants/models";
 import { flatten } from "lodash";
@@ -16,6 +15,10 @@ import { DeepSeekIcon } from "@components/icons/deepseek-icon";
 import { GeminiIcon } from "@components/icons/gemini-icon";
 import { OpenAIIcon } from "@components/icons/openai-icon";
 import { Message } from "ai";
+import RemarkMathPlugin from "remark-math";
+import rehypeKatex from "rehype-katex";
+import ReactMarkdown from "react-markdown";
+import React from "react";
 
 interface AssistantMessageProps {
   message: Message;
@@ -78,16 +81,7 @@ const AssistantMessage: FunctionComponent<AssistantMessageProps> = ({
         </p>
       </div>
       <div className={cn("flex flex-col gap-2 dark:text-neutral-300 relative")}>
-        <Markdown
-          options={{
-            overrides: {
-              ...markdownOptions,
-              code: CodeComponent,
-            },
-          }}
-        >
-          {message.content}
-        </Markdown>
+        <MarkdownRenderer>{message.content}</MarkdownRenderer>
         <div className="flex gap-3">
           {sources && <SourcesDialog sources={sources} />}
           <TooltipButton
@@ -103,55 +97,132 @@ const AssistantMessage: FunctionComponent<AssistantMessageProps> = ({
 
 export default AssistantMessage;
 
-const markdownOptions = {
-  h1: {
-    props: {
-      className: "text-2xl font-semibold my-2 first:mt-0",
+const MarkdownRenderer = (props: any) => {
+  const newProps = {
+    ...props,
+    remarkPlugins: [RemarkMathPlugin],
+    rehypePlugins: [rehypeKatex],
+  };
+
+  // Combine code component with other markdown element styling
+  const components = {
+    code: CodeComponent,
+    h1: ({ children, ...props }: any) => (
+      <h1 className="text-2xl font-semibold my-2 first:mt-0" {...props}>
+        {children}
+      </h1>
+    ),
+    h2: ({ children, ...props }: any) => (
+      <h2 className="text-xl font-semibold my-2 first:mt-0" {...props}>
+        {children}
+      </h2>
+    ),
+    h3: ({ children, ...props }: any) => (
+      <h3 className="text-lg font-semibold my-2 first:mt-0" {...props}>
+        {children}
+      </h3>
+    ),
+    h4: ({ children, ...props }: any) => (
+      <h4 className="text-base font-semibold my-2 first:mt-0" {...props}>
+        {children}
+      </h4>
+    ),
+    h5: ({ children, ...props }: any) => (
+      <h5 className="text-sm font-semibold my-2 first:mt-0" {...props}>
+        {children}
+      </h5>
+    ),
+    h6: ({ children, ...props }: any) => (
+      <h6 className="text-xs font-semibold my-2 first:mt-0" {...props}>
+        {children}
+      </h6>
+    ),
+    p: ({ children, ...props }: any) => (
+      <p className="my-2 last:mb-0 first:mt-0" {...props}>
+        {children}
+      </p>
+    ),
+    ol: ({ children, ...props }: any) => (
+      <ol className="list-decimal pl-5" {...props}>
+        {children}
+      </ol>
+    ),
+    ul: ({ children, ...props }: any) => (
+      <ul className="list-disc pl-5" {...props}>
+        {children}
+      </ul>
+    ),
+    li: ({ children, ...props }: any) => {
+      // Helper function to count KaTeX spans
+      const countKatexSpans = (element: any): number => {
+        if (!element) return 0;
+
+        let count = 0;
+
+        // Check if current element is a katex span
+        if (element.props?.className === "katex") {
+          count += 1;
+        }
+
+        // Check children recursively
+        if (element.props?.children) {
+          const childrenArray = React.Children.toArray(element.props.children);
+          count += childrenArray.reduce((total: number, child: any) => {
+            return total + countKatexSpans(child);
+          }, 0);
+        }
+
+        return count;
+      };
+
+      const katexCount = countKatexSpans({ props: { children } });
+
+      // Apply different styling based on KaTeX count
+      if (katexCount === 1) {
+        return (
+          <li
+            className="flex flex-col gap-2 my-2 last:mb-0 first:mt-0"
+            {...props}
+          >
+            {children}
+          </li>
+        );
+      }
+
+      return (
+        <li className="my-2 last:mb-0 first:mt-0" {...props}>
+          {children}
+        </li>
+      );
     },
-  },
-  h2: {
-    props: {
-      className: "text-xl font-semibold my-2 first:mt-0",
+    span: ({ children, ...props }: any) => {
+      if (props["aria-hidden"]) {
+        return null;
+      }
+
+      // Check if span has katex className and apply spacing
+      if (
+        props.className &&
+        typeof props.className === "string" &&
+        props.className === "katex"
+      ) {
+        return (
+          <span
+            {...props}
+            className={`${props.className} text-md my-1 inline-block`}
+          >
+            {children}
+          </span>
+        );
+      }
+
+      return <span {...props}>{children}</span>;
     },
-  },
-  h3: {
-    props: {
-      className: "text-lg font-semibold my-2 first:mt-0",
-    },
-  },
-  h4: {
-    props: {
-      className: "text-base font-semibold my-2 first:mt-0",
-    },
-  },
-  h5: {
-    props: {
-      className: "text-sm font-semibold my-2 first:mt-0",
-    },
-  },
-  h6: {
-    props: {
-      className: "text-xs font-semibold my-2 first:mt-0",
-    },
-  },
-  p: {
-    props: {
-      className: "my-2 last:mb-0 first:mt-0",
-    },
-  },
-  ol: {
-    props: {
-      className: "list-decimal pl-5",
-    },
-  },
-  ul: {
-    props: {
-      className: "list-disc pl-5",
-    },
-  },
-  li: {
-    props: {
-      className: "my-2 last:mb-0 first:mt-0",
-    },
-  },
+  };
+
+  return (
+    <ReactMarkdown {...newProps} components={components}>
+      {props.children}
+    </ReactMarkdown>
+  );
 };
