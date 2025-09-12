@@ -74,7 +74,7 @@ export default function SettingsDialog() {
       <DialogTrigger>
         <TooltipIcon icon={SettingsIcon} tooltipText="Settings" />
       </DialogTrigger>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>Settings</DialogTitle>
           <DialogDescription>
@@ -119,7 +119,7 @@ export default function SettingsDialog() {
             value={formData.DeepSeek || ""}
             onChange={(value) => handleInputChange(Providers.DeepSeek, value)}
           />
-          <div className="flex flex-col justify-end gap-2 mt-2">
+          <div className="flex flex-col gap-2 mt-2">
             <Button onClick={handleSave} disabled={isSaving}>
               {isSaving ? "Saving..." : "Save"}
             </Button>

@@ -2,6 +2,14 @@
 
 import { Loader2, MessageSquarePlus, Trash } from "lucide-react";
 import { Button } from "./ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "./ui/dialog";
 import { SafeChat } from "@/lib/db/schema";
 import { useRouter } from "next/navigation";
 import UserSettings from "./user-settings";
@@ -13,6 +21,7 @@ import { useAppStore } from "@store/app-store";
 import { useUserInitialization } from "@providers/user-provider";
 import { PdfIcon } from "./icons/pdf-icon";
 import dayjs from "dayjs";
+import { cn } from "@lib/utils";
 
 interface ChatSideBarProps {}
 
@@ -22,6 +31,8 @@ const ChatSideBar = ({}: ChatSideBarProps) => {
   const { chats, currentChatId, setCurrentChatId, removeChat } = useAppStore();
 
   const [removingChatId, setRemovingChatId] = useState<string | null>(null);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [chatToDelete, setChatToDelete] = useState<SafeChat | null>(null);
 
   const { mutate, isPending } = useMutation({
     mutationFn: async (chat: SafeChat) => {
@@ -38,17 +49,34 @@ const ChatSideBar = ({}: ChatSideBarProps) => {
     router.push("/chat");
   };
 
+  const handleSelectChat = (chat: SafeChat) => {
+    if (isPending && removingChatId === chat.id) return;
+
+    setCurrentChatId(chat.id);
+    router.push(`/chat/${chat.id}`);
+  };
+
   const handleRemoveChat = (
     e: React.MouseEvent<HTMLButtonElement>,
     chat: SafeChat
   ) => {
     e.stopPropagation();
-    setRemovingChatId(chat.id);
-    mutate(chat, {
+    setChatToDelete(chat);
+    setShowDeleteDialog(true);
+  };
+
+  const confirmDeleteChat = () => {
+    if (!chatToDelete) return;
+
+    setRemovingChatId(chatToDelete.id);
+    setShowDeleteDialog(false);
+
+    mutate(chatToDelete, {
       onSuccess: ({ chatId }: { chatId: string }) => {
         toast.success("Delete chat successfully");
         removeChat(chatId);
         setRemovingChatId(null);
+        setChatToDelete(null);
         if (chatId === currentChatId) {
           router.push("/chat");
         }
@@ -56,8 +84,14 @@ const ChatSideBar = ({}: ChatSideBarProps) => {
       onError: () => {
         toast.error("Error deleting chat");
         setRemovingChatId(null);
+        setChatToDelete(null);
       },
     });
+  };
+
+  const cancelDeleteChat = () => {
+    setShowDeleteDialog(false);
+    setChatToDelete(null);
   };
 
   return (
@@ -75,12 +109,21 @@ const ChatSideBar = ({}: ChatSideBarProps) => {
               return (
                 <li
                   key={chat.id}
-                  className={`w-full group flex justify-between gap-2 items-center p-3 rounded-md cursor-pointer hover:bg-purple-custom-50 hover:text-neutral-800 dark:hover:bg-neutral-800 dark:hover:text-neutral-300 ${
-                    selected
-                      ? "bg-purple-custom-50 text-neutral-800 dark:bg-neutral-800 dark:text-neutral-300"
-                      : "text-neutral-500"
-                  }`}
-                  onClick={() => router.push(`/chat/${chat.id}`)}
+                  className={cn(
+                    "w-full group flex justify-between gap-2 items-center p-3 rounded-md text-neutral-500",
+                    {
+                      // Selected state
+                      "bg-purple-custom-50 text-neutral-800 dark:bg-neutral-800 dark:text-neutral-300":
+                        selected,
+                      // Normal hover state (only when not deleting)
+                      "cursor-pointer hover:bg-purple-custom-50 hover:text-neutral-800 dark:hover:bg-neutral-800 dark:hover:text-neutral-300":
+                        !(isPending && removingChatId === chat.id),
+                      // Deleting state
+                      "animate-pulse cursor-not-allowed":
+                        isPending && removingChatId === chat.id,
+                    }
+                  )}
+                  onClick={() => handleSelectChat(chat)}
                 >
                   <div className="flex items-center gap-1 w-full">
                     <div className="flex items-center gap-2 w-[90%]">
@@ -92,18 +135,20 @@ const ChatSideBar = ({}: ChatSideBarProps) => {
                         </p>
                       </div>
                     </div>
-                    {isPending && removingChatId === chat.id ? (
-                      <Loader2 size={15} className="animate-spin" />
-                    ) : (
-                      <Button
-                        variant="ghost"
-                        className="group-hover:block hidden h-fit shrink-0 p-1 text-neutral-500 hover:text-neutral-900 dark:hover:text-neutral-300"
-                        disabled={isPending}
-                        onClick={(e) => handleRemoveChat(e, chat)}
-                      >
-                        <Trash size={14} />
-                      </Button>
-                    )}
+                    <Button
+                      variant="ghost"
+                      className={cn(
+                        "group-hover:block hidden h-fit shrink-0 p-1 text-neutral-500 hover:text-neutral-900 dark:hover:text-neutral-300",
+                        {
+                          "group-hover:hidden":
+                            isPending && removingChatId === chat.id,
+                        }
+                      )}
+                      disabled={isPending}
+                      onClick={(e) => handleRemoveChat(e, chat)}
+                    >
+                      <Trash size={14} />
+                    </Button>
                   </div>
                 </li>
               );
@@ -112,6 +157,46 @@ const ChatSideBar = ({}: ChatSideBarProps) => {
         )}
       </div>
       <UserSettings />
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Delete Chat</DialogTitle>
+            <DialogDescription>
+              <p className="mt-2">
+                Are you sure you want to delete this chat with{" "}
+                <span className="font-semibold">{chatToDelete?.pdfName}</span>?
+                This action cannot be undone and will permanently remove all
+                messages in this conversation.
+              </p>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={cancelDeleteChat}
+              disabled={isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={confirmDeleteChat}
+              disabled={isPending}
+            >
+              {isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                "Delete Chat"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

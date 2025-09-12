@@ -7,15 +7,14 @@ import toast from "react-hot-toast";
 import { uploadToS3 } from "@/lib/s3";
 import { useMutation } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-import { Loader2, Upload } from "lucide-react";
 import { logger } from "@lib/logger";
 import LimitReachedDialog from "./dialogs/limit-reached-dialog";
 import { useAppStore } from "@store/app-store";
 import { SafeChat } from "@lib/db/schema";
 import { useDbEvents } from "@providers/db-events-provider";
-import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { PdfIcon } from "./icons/pdf-icon";
+import { FileUploadIcon } from "./icons/file-upload-icon";
 
 const FileUpload = () => {
   const router = useRouter();
@@ -103,6 +102,7 @@ const FileUpload = () => {
             "border-dashed border-2 rounded-xl cursor-pointer p-5 py-8 flex justify-center items-center flex-col dark:border-neutral-500",
             {
               "bg-neutral-100 dark:bg-neutral-800": isDragActive,
+              "cursor-not-allowed": isPending || isUploading,
             }
           ),
         })}
@@ -110,17 +110,19 @@ const FileUpload = () => {
         <input {...getInputProps()} />
         {isPending || isUploading ? (
           <>
-            <Loader2
-              size={30}
-              className="animate-spin text-neutral-400 dark:text-neutral-500"
-            />
-            <p className="text-neutral-500 dark:text-neutral-400 mt-4">
+            <FileUploadIcon size={85} />
+            <p className="text-lg font-semibold text-neutral-900 dark:text-neutral-200 mt-4">
               Spilling tea to AI...
             </p>
           </>
         ) : (
           <>
-            <PdfIcon size={100} />
+            <PdfIcon
+              size={85}
+              className={cn({
+                "opacity-50": isDragActive,
+              })}
+            />
             <p className="text-lg font-semibold text-neutral-900 dark:text-neutral-200 mt-4">
               {isDragActive
                 ? "Drop your file here"
