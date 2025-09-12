@@ -1,7 +1,7 @@
 "use client";
 
 import { HelpCircle, Mail } from "lucide-react";
-import PricingDialog from "./pricing-dialog";
+import PricingDialog from "./dialogs/pricing-dialog";
 import {
   Dialog,
   DialogContent,

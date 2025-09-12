@@ -25,7 +25,7 @@ const PdfViewer: FunctionComponent<PdfViewerProps> = ({
 
   return (
     <Resizable
-      size={{ width: width || "60%", height: "100vh" }}
+      size={{ width: width || "60%", height: "100%" }}
       maxWidth={maxWidth}
       minWidth={500}
       enable={{
@@ -43,13 +43,13 @@ const PdfViewer: FunctionComponent<PdfViewerProps> = ({
       }}
       handleComponent={{
         right: (
-          <div className="w-1.5 h-screen bg-neutral-200 dark:bg-black/70 cursor-col-resize" />
+          <div className="w-1.5 h-full bg-purple-custom-50 dark:bg-neutral-950 cursor-col-resize" />
         ),
       }}
     >
       <iframe
         src={`https://docs.google.com/gview?url=${pdfUrl}&embedded=true`}
-        className="w-full h-full"
+        className="w-full h-full rounded-md"
       />
     </Resizable>
   );

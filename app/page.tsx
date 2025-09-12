@@ -8,7 +8,7 @@ export default function Home() {
     <ClientOnly>
       <div className="w-screen h-screen relative bg-gradient-to-br from-indigo-100 via-violet-100 to-purple-200">
         <Link href="/" className="absolute top-8 left-8">
-          <Image src="/logo.svg" alt="logo" width="140" height="100" />
+          <Image src="/askpdf-logo.svg" alt="logo" width="140" height="100" />
         </Link>
         <div className="w-full h-full flex flex-col items-center justify-center gap-3 px-5">
           <div className="flex flex-col items-center gap-2">

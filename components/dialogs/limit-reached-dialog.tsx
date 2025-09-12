@@ -7,7 +7,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
-} from "./ui/dialog";
+} from "../ui/dialog";
 import { useAppStore } from "@store/app-store";
 import { useDbEvents } from "@providers/db-events-provider";
 

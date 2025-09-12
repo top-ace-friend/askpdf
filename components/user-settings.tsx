@@ -1,14 +1,10 @@
 "use client";
 
 import { useUser, UserButton } from "@clerk/nextjs";
-import { Moon, Sun } from "lucide-react";
-import { Switch } from "./ui/switch";
-import { useTheme } from "next-themes";
 import UsageInfo from "./usage-info";
-import ContactButton from "./contact-button";
 import { useAppStore } from "@store/app-store";
 import { useUserInitialization } from "@providers/user-provider";
-import SettingsDialog from "./settings-dialog";
+import SettingsDialog from "./dialogs/settings-dialog";
 
 interface UserSettingsProps {}
 
@@ -16,8 +12,6 @@ const UserSettings = ({}: UserSettingsProps) => {
   const { user } = useUser();
   const { isUsageRestricted, messageCount, fileCount } = useAppStore();
   const { isInitialized } = useUserInitialization();
-  const { theme, setTheme } = useTheme();
-  const darkmode = theme === "dark";
 
   return (
     <div className="flex flex-col gap-5 dark:border-neutral-700">
@@ -35,15 +29,7 @@ const UserSettings = ({}: UserSettingsProps) => {
             {user?.fullName}
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Switch
-            checked={darkmode}
-            icon={darkmode ? Moon : Sun}
-            iconClassName={darkmode ? "text-white" : "text-neutral-600"}
-            onClick={() => setTheme(darkmode ? "light" : "dark")}
-          />
-          <SettingsDialog />
-        </div>
+        <SettingsDialog />
       </div>
     </div>
   );

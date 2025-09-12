@@ -4,10 +4,8 @@ interface ChatFileProps {}
 
 const ChatFile = ({}: ChatFileProps) => {
   return (
-    <div className="relative flex-1 w-full h-screen overflow-auto no-scrollbar">
-      <div className="absolute-center">
-        <FileUpload />
-      </div>
+    <div className="relative flex-1 w-full h-full flex justify-center items-center">
+      <FileUpload />
     </div>
   );
 };

@@ -7,9 +7,9 @@ import { useQuery } from "@tanstack/react-query";
 import { Loader2, CornerDownRight } from "lucide-react";
 import { SafeChat } from "@/lib/db/schema";
 import { Button } from "./ui/button";
-import MessageList from "./message-list";
+import MessageList from "./messages/message-list";
 import { Textarea } from "./ui/textarea";
-import LimitReachedDialog from "./limit-reached-dialog";
+import LimitReachedDialog from "./dialogs/limit-reached-dialog";
 import ModelSelector from "./model-selector";
 import { useAppStore } from "@store/app-store";
 import { useDbEvents } from "@providers/db-events-provider";
@@ -128,7 +128,7 @@ const ChatInterface: FunctionComponent<ChatInterfaceProps> = ({
 
   return (
     <>
-      <div className="relative w-full h-screen flex flex-col justify-between">
+      <div className="relative w-full h-full flex flex-col justify-between bg-neutral-50 dark:bg-neutral-900 rounded-md">
         <MessageList
           messages={messages}
           isLoading={query.isLoading}
@@ -137,7 +137,7 @@ const ChatInterface: FunctionComponent<ChatInterfaceProps> = ({
           chatId={chatId}
         />
         <form
-          className={`flex gap-3 bg-white dark:bg-background px-3 pt-1 pb-5`}
+          className={`flex gap-3 bg-neutral-50 dark:bg-neutral-900 px-3 pt-1 pb-5`}
           onSubmit={onSubmit}
         >
           {/* Chat input container */}
@@ -149,7 +149,7 @@ const ChatInterface: FunctionComponent<ChatInterfaceProps> = ({
               disabled={isLoading}
               onChange={handleInputChange}
               onKeyDown={onKeyDown}
-              className="pt-2.5 border-none resize-none"
+              className="pt-2.5 border-none resize-none bg-transparent"
             />
             {/* Bottom row with model selector and send button */}
             <div className="flex items-center justify-between w-full pb-2">

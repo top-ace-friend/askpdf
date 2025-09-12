@@ -5,8 +5,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { FunctionComponent } from "react";
-import { DialogHeader } from "./ui/dialog";
-import TooltipButton from "./ui/tooltip-button";
+import { DialogHeader } from "../ui/dialog";
+import TooltipButton from "../ui/tooltip-button";
 import { List } from "lucide-react";
 
 type Source = {

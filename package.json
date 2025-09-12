@@ -37,6 +37,7 @@
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.0.0",
     "crypto-js": "^4.2.0",
+    "dayjs": "^1.11.18",
     "drizzle-orm": "^0.28.6",
     "langchain": "^0.3.31",
     "lucide-react": "^0.287.0",

@@ -11,6 +11,8 @@ import { useMutation } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { useAppStore } from "@store/app-store";
 import { useUserInitialization } from "@providers/user-provider";
+import { PdfIcon } from "./icons/pdf-icon";
+import dayjs from "dayjs";
 
 interface ChatSideBarProps {}
 
@@ -59,7 +61,7 @@ const ChatSideBar = ({}: ChatSideBarProps) => {
   };
 
   return (
-    <div className="w-72 h-screen shrink-0 bg-purple-custom-50 dark:bg-neutral-900 px-4 py-5 flex flex-col justify-between">
+    <div className="w-72 h-full shrink-0 bg-neutral-50 dark:bg-neutral-900 px-4 py-5 flex flex-col justify-between rounded-md mr-1">
       <div>
         <NewChatButton onClick={handleNewChat} disabled={isInitializing} />
         {isInitializing ? (
@@ -67,31 +69,39 @@ const ChatSideBar = ({}: ChatSideBarProps) => {
             <Loader2 className="text-neutral-400 dark:text-neutral-600 animate-spin" />
           </div>
         ) : (
-          <div className="w-full mt-3 flex flex-col gap-1">
+          <div className="w-full mt-3 flex flex-col gap-2">
             {chats.map((chat) => {
               const selected = chat.id === currentChatId;
               return (
                 <li
                   key={chat.id}
-                  className={`w-full group flex justify-between gap-2 items-center p-3 rounded-md cursor-pointer hover:bg-purple-custom-300/50 hover:text-neutral-800 dark:hover:bg-neutral-800 dark:hover:text-neutral-300 ${
+                  className={`w-full group flex justify-between gap-2 items-center p-3 rounded-md cursor-pointer hover:bg-purple-custom-50 hover:text-neutral-800 dark:hover:bg-neutral-800 dark:hover:text-neutral-300 ${
                     selected
-                      ? "bg-purple-custom-300/50 text-neutral-800 dark:bg-neutral-800 dark:text-neutral-300"
-                      : "text-neutral-700 dark:text-neutral-400"
+                      ? "bg-purple-custom-50 text-neutral-800 dark:bg-neutral-800 dark:text-neutral-300"
+                      : "text-neutral-500"
                   }`}
                   onClick={() => router.push(`/chat/${chat.id}`)}
                 >
                   <div className="flex items-center gap-1 w-full">
-                    <p className="truncate w-[90%]">{chat.pdfName}</p>
+                    <div className="flex items-center gap-2 w-[90%]">
+                      <PdfIcon size={30} className="shrink-0" />
+                      <div className="flex flex-col w-[85%]">
+                        <p className="truncate w-full">{chat.pdfName}</p>
+                        <p className="text-xs text-neutral-400 dark:text-neutral-500">
+                          {dayjs(chat.createdAt).format("DD MMM YYYY")}
+                        </p>
+                      </div>
+                    </div>
                     {isPending && removingChatId === chat.id ? (
                       <Loader2 size={15} className="animate-spin" />
                     ) : (
                       <Button
                         variant="ghost"
-                        className="group-hover:block hidden h-fit shrink-0 p-1 bg-purple-custom-100 dark:bg-neutral-600 hover:bg-purple-custom-300 hover:dark:bg-neutral-700 rounded"
+                        className="group-hover:block hidden h-fit shrink-0 p-1 text-neutral-500 hover:text-neutral-900 dark:hover:text-neutral-300"
                         disabled={isPending}
                         onClick={(e) => handleRemoveChat(e, chat)}
                       >
-                        <Trash size={15} />
+                        <Trash size={14} />
                       </Button>
                     )}
                   </div>
@@ -116,8 +126,8 @@ interface NewChatButtonProps {
 const NewChatButton = ({ onClick, disabled }: NewChatButtonProps) => {
   return (
     <Button
-      variant="secondary"
-      className="w-full bg-white dark:bg-neutral-700 dark:hover:bg-neutral-600 text-neutral-600 dark:text-neutral-300 shadow"
+      variant="outline"
+      className="w-full bg-transparent border-neutral-300 dark:border-neutral-700"
       onClick={onClick}
       disabled={disabled}
     >

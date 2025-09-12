@@ -9,12 +9,12 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "./ui/dialog";
-import { TooltipIcon } from "./ui/tooltip";
-import { Input } from "./ui/input";
-import { Label } from "./ui/label";
-import { Button } from "./ui/button";
-import ContactButton from "./contact-button";
+} from "../ui/dialog";
+import { TooltipIcon } from "../ui/tooltip";
+import { Input } from "../ui/input";
+import { Label } from "../ui/label";
+import { Button } from "../ui/button";
+import ContactButton from "../contact-button";
 import { useAppStore, ApiKeys } from "@/store/app-store";
 import { useUser } from "@clerk/nextjs";
 import toast from "react-hot-toast";

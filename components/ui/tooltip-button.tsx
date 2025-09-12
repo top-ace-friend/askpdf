@@ -16,30 +16,33 @@ interface TooltipButtonProps {
   onClick?: () => void;
 }
 
-const TooltipButton: FunctionComponent<TooltipButtonProps> = ({
-  icon,
-  tooltipText,
-  className,
-  iconClassName,
-  onClick,
-}) => {
+const TooltipButton: FunctionComponent<
+  TooltipButtonProps & React.ComponentPropsWithoutRef<typeof TooltipContent>
+> = ({ icon, tooltipText, className, iconClassName, onClick, ...props }) => {
   const Icon = icon;
   return (
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger>
           <Button
+            variant="ghost"
             className={cn(
-              "bg-transparent hover:bg-purple-custom-200 dark:hover:bg-neutral-700 py-[3px] px-2",
+              "bg-transparent hover:bg-transparent p-0 w-fit h-fit",
               className
             )}
             size="sm"
             onClick={onClick}
           >
-            <Icon size={15} className={cn("text-neutral-400", iconClassName)} />
+            <Icon
+              size={15}
+              className={cn(
+                "text-neutral-400 dark:text-neutral-500 hover:text-neutral-900 dark:hover:text-neutral-300",
+                iconClassName
+              )}
+            />
           </Button>
         </TooltipTrigger>
-        <TooltipContent>
+        <TooltipContent {...props}>
           <p className="text-sm">{tooltipText}</p>
         </TooltipContent>
       </Tooltip>

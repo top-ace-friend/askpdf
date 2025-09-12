@@ -32,12 +32,13 @@ const TooltipIcon = ({
   tooltipText,
   className,
   iconClassName,
+  ...props
 }: {
   icon: any;
   tooltipText: string;
   className?: string;
   iconClassName?: string;
-}) => {
+} & React.ComponentPropsWithoutRef<typeof TooltipPrimitive.Content>) => {
   const Icon = icon;
   return (
     <TooltipProvider>
@@ -58,7 +59,7 @@ const TooltipIcon = ({
             />
           </div>
         </TooltipTrigger>
-        <TooltipContent>
+        <TooltipContent {...props}>
           <p className="text-sm">{tooltipText}</p>
         </TooltipContent>
       </Tooltip>

@@ -9,10 +9,13 @@ import { useMutation } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { Loader2, Upload } from "lucide-react";
 import { logger } from "@lib/logger";
-import LimitReachedDialog from "./limit-reached-dialog";
+import LimitReachedDialog from "./dialogs/limit-reached-dialog";
 import { useAppStore } from "@store/app-store";
 import { SafeChat } from "@lib/db/schema";
 import { useDbEvents } from "@providers/db-events-provider";
+import Image from "next/image";
+import { cn } from "@/lib/utils";
+import { PdfIcon } from "./icons/pdf-icon";
 
 const FileUpload = () => {
   const router = useRouter();
@@ -92,35 +95,48 @@ const FileUpload = () => {
   });
 
   return (
-    <div
-      {...getRootProps({
-        className:
-          "w-[370px] border-dashed border-2 rounded-xl cursor-pointer bg-neutral-50 p-5 py-8 flex justify-center items-center flex-col dark:bg-neutral-900 dark:border-neutral-500",
-      })}
-    >
-      <input {...getInputProps()} />
-      {isPending || isUploading ? (
-        <>
-          <Loader2 size={30} className="animate-spin text-slate-500" />
-          <p className="text-slate-400 mt-1">Spilling tea to AI...</p>
-        </>
-      ) : (
-        <>
-          <Upload
-            size={22}
-            className="text-neutral-400 dark:text-neutral-500 mb-1"
-          />
-          <p className="text-neutral-400 dark:text-neutral-500">
-            Drop your PDF here{isDragActive ? "" : " or click to select file"}
-          </p>
-        </>
-      )}
+    <div className="w-1/2 bg-neutral-50 dark:bg-neutral-900 rounded-xl p-5">
+      <div
+        {...getRootProps({
+          className: cn(
+            "border-dashed border-2 rounded-xl cursor-pointer p-5 py-8 flex justify-center items-center flex-col dark:border-neutral-500",
+            {
+              "bg-neutral-100 dark:bg-neutral-800": isDragActive,
+            }
+          ),
+        })}
+      >
+        <input {...getInputProps()} />
+        {isPending || isUploading ? (
+          <>
+            <Loader2 size={30} className="animate-spin text-slate-500" />
+            <p className="text-slate-400 mt-1">Spilling tea to AI...</p>
+          </>
+        ) : (
+          <>
+            <PdfIcon size={100} />
+            <p className="text-lg font-semibold text-neutral-900 dark:text-neutral-200 mt-4">
+              {isDragActive
+                ? "Drop your file here"
+                : "Drag and drop your file here or click to select file"}
+            </p>
+            <div className="flex gap-2 mt-2 text-sm">
+              <p className="text-neutral-400 dark:text-neutral-500 border-r-2 border-neutral-300 dark:border-neutral-700 pr-2">
+                Supported file types: PDF
+              </p>
+              <p className="text-neutral-400 dark:text-neutral-500">
+                Max file size: 5MB
+              </p>
+            </div>
+          </>
+        )}
 
-      <LimitReachedDialog
-        type="file"
-        open={showLimitDialog}
-        setOpen={setShowLimitDialog}
-      />
+        <LimitReachedDialog
+          type="file"
+          open={showLimitDialog}
+          setOpen={setShowLimitDialog}
+        />
+      </div>
     </div>
   );
 };
