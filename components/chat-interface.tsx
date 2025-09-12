@@ -5,7 +5,7 @@ import { FunctionComponent, useEffect, useState } from "react";
 import { useChat } from "ai/react";
 import { useQuery } from "@tanstack/react-query";
 import { Loader2, CornerDownRight } from "lucide-react";
-import { SafeChat } from "@/lib/db/schema";
+import { SafeChat, messages } from "@/lib/db/schema";
 import { Button } from "./ui/button";
 import MessageList from "./messages/message-list";
 import { Textarea } from "./ui/textarea";
@@ -51,6 +51,10 @@ const ChatInterface: FunctionComponent<ChatInterfaceProps> = ({
     Record<string, any>
   >({});
   const [showLimitDialog, setShowLimitDialog] = useState(false);
+  const [isWaitingForResponse, setIsWaitingForResponse] = useState(false);
+  const [modelForMessages, setModelForMessages] = useState<
+    Record<string, string>
+  >({});
 
   const { messages, input, isLoading, handleInputChange, handleSubmit } =
     useChat({
@@ -64,6 +68,8 @@ const ChatInterface: FunctionComponent<ChatInterfaceProps> = ({
       },
       initialMessages: query.data?.messages || [],
       onResponse: (response) => {
+        setIsWaitingForResponse(false);
+
         updateMessageCount("increase", 1);
 
         const sourcesHeader = response.headers.get("x-sources");
@@ -71,11 +77,22 @@ const ChatInterface: FunctionComponent<ChatInterfaceProps> = ({
           ? JSON.parse(Buffer.from(sourcesHeader, "base64").toString("utf8"))
           : [];
         const messageIndexHeader = response.headers.get("x-message-index");
-        if (sources.length && messageIndexHeader !== null) {
-          setSourcesForMessages({
-            ...sourcesForMessages,
-            [messageIndexHeader]: sources,
-          });
+        const modelHeader = response.headers.get("x-model");
+        if (messageIndexHeader) {
+          if (sources.length) {
+            setSourcesForMessages({
+              ...sourcesForMessages,
+              [messageIndexHeader]: sources,
+            });
+          }
+
+          // Store the selected model for the new AI message
+          if (modelHeader) {
+            setModelForMessages((prev) => ({
+              ...prev,
+              [messageIndexHeader]: modelHeader,
+            }));
+          }
         }
       },
       onError: (error) => {
@@ -99,6 +116,19 @@ const ChatInterface: FunctionComponent<ChatInterfaceProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Extract model information from database messages
+  useEffect(() => {
+    if (query.data?.messages) {
+      const modelMap: Record<string, string> = {};
+      query.data.messages.forEach((msg: any) => {
+        if (msg.model) {
+          modelMap[msg.id] = msg.model;
+        }
+      });
+      setModelForMessages(modelMap);
+    }
+  }, [query.data?.messages]);
+
   // useEffect(() => {
   //   if (query.data?.sources) {
   //     const msgSources = query.data?.sources
@@ -117,6 +147,7 @@ const ChatInterface: FunctionComponent<ChatInterfaceProps> = ({
       setShowLimitDialog(true);
       return;
     }
+    setIsWaitingForResponse(true);
     handleSubmit(e);
   };
 
@@ -128,12 +159,13 @@ const ChatInterface: FunctionComponent<ChatInterfaceProps> = ({
 
   return (
     <>
-      <div className="relative w-full h-full flex flex-col justify-between bg-neutral-50 dark:bg-neutral-900 rounded-md">
+      <div className="relative w-full h-[calc(100vh-72px)] flex flex-col justify-between bg-neutral-50 dark:bg-neutral-900 rounded-md">
         <MessageList
           messages={messages}
           isLoading={query.isLoading}
-          isResponding={isLoading}
-          // data={sourcesForMessages}
+          isWaitingForResponse={isWaitingForResponse}
+          // sources={sourcesForMessages}
+          models={modelForMessages}
           chatId={chatId}
         />
         <form

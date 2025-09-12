@@ -7,9 +7,30 @@ export enum AppSettings {
   FreeMessages = "free_messages",
 }
 
+export enum Providers {
+  OpenAI = "OpenAI",
+  Anthropic = "Anthropic",
+  Google = "Google",
+  DeepSeek = "DeepSeek",
+}
+
+export enum ModelTypes {
+  Basic = "Basic",
+  Pro = "Pro",
+}
+
 export interface ApiKeys {
-  openai?: string;
-  anthropic?: string;
-  google?: string;
-  deepseek?: string;
+  [Providers.OpenAI]?: string;
+  [Providers.Anthropic]?: string;
+  [Providers.Google]?: string;
+  [Providers.DeepSeek]?: string;
+}
+
+export interface ModelOption {
+  value: string;
+  label: string;
+  description: string;
+  provider: Providers;
+  credits: number;
+  modelType: ModelTypes;
 }

@@ -1,10 +1,10 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { Message } from "ai";
 import { Clipboard, Check } from "lucide-react";
 import { FunctionComponent } from "react";
 import TooltipButton from "../ui/tooltip-button";
+import { Message } from "ai";
 
 interface UserMessageProps {
   message: Message;

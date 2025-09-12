@@ -9,7 +9,7 @@ import CryptoJS from "crypto-js";
 import { logger } from "./logger";
 
 // Fixed salt for key derivation (in production, this should be environment-specific)
-const ENCRYPTION_SALT = "chat-pdf-app-salt-2024";
+const ENCRYPTION_SALT = "ask-pdf-app-salt-2024";
 const PBKDF2_ITERATIONS = 100000;
 
 /**

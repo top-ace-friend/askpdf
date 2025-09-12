@@ -1,24 +1,26 @@
 "use client";
 
-import { Message } from "ai";
 import { Loader2 } from "lucide-react";
 import { FunctionComponent, useEffect, useState } from "react";
 import UserMessage from "./user-message";
 import AssistantMessage from "./assistant-message";
+import { Message } from "ai";
 
 interface MessageListProps {
   messages: Message[];
   chatId: string;
   isLoading: boolean;
-  isResponding: boolean;
-  data?: Record<string, any>;
+  isWaitingForResponse: boolean;
+  sources?: Record<string, any>;
+  models?: Record<string, string>;
 }
 
 const MessageList: FunctionComponent<MessageListProps> = ({
   messages,
   isLoading,
-  isResponding = false,
-  data,
+  isWaitingForResponse = false,
+  sources,
+  models,
 }) => {
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
 
@@ -38,7 +40,7 @@ const MessageList: FunctionComponent<MessageListProps> = ({
         behavior: "smooth",
       });
     }
-  }, [messages, isResponding]);
+  }, [messages, isWaitingForResponse]);
 
   if (isLoading) {
     return (
@@ -70,23 +72,24 @@ const MessageList: FunctionComponent<MessageListProps> = ({
               messageIndex={i}
               copiedMessageId={copiedMessageId}
               onCopy={handleCopy}
-              sources={data && (data[m.id] ?? data[i])}
+              sources={sources && (sources[m.id] ?? sources[i])}
+              model={models && (models[m.id] ?? models[i])}
             />
           )}
         </div>
       ))}
 
       {/* Loading placeholder when AI is responding */}
-      {isResponding && (
+      {isWaitingForResponse && (
         <div className="flex justify-start">
           <div className="flex flex-col items-end gap-2 rounded-md px-3 py-1.5">
             <div className="flex items-center gap-2">
               <div className="flex space-x-1">
-                <div className="w-1.5 h-1.5 bg-neutral-400 dark:bg-neutral-500 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
-                <div className="w-1.5 h-1.5 bg-neutral-400 dark:bg-neutral-500 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
-                <div className="w-1.5 h-1.5 bg-neutral-400 dark:bg-neutral-500 rounded-full animate-bounce"></div>
+                <div className="w-1 h-1 bg-neutral-500 dark:bg-neutral-400 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+                <div className="w-1 h-1 bg-neutral-500 dark:bg-neutral-400 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+                <div className="w-1 h-1 bg-neutral-500 dark:bg-neutral-400 rounded-full animate-bounce"></div>
               </div>
-              <span className="text-xs text-neutral-500 dark:text-neutral-400">
+              <span className="text-sm text-neutral-500 dark:text-neutral-400">
                 AI is thinking
               </span>
             </div>

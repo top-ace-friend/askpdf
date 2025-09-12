@@ -98,19 +98,26 @@ function createChatModel(
 
   switch (provider) {
     case "openai":
-      const openaiKey = apiKeys?.openai || openAIApiKey;
+      const openaiKey = apiKeys?.OpenAI || openAIApiKey;
       if (!openaiKey) {
         throw new Error("OpenAI API key is required for this model");
+      }
+      let temperature: number | undefined = 0;
+      if (
+        modelName === OPENAI_MODELS.GPT_5 ||
+        modelName === OPENAI_MODELS.GPT_5_MINI
+      ) {
+        temperature = undefined;
       }
       return new ChatOpenAI({
         apiKey: openaiKey,
         modelName,
         streaming,
-        temperature: 0,
+        temperature,
       });
 
     case "anthropic":
-      const anthropicKey = apiKeys?.anthropic || anthropicApiKey;
+      const anthropicKey = apiKeys?.Anthropic || anthropicApiKey;
       if (!anthropicKey) {
         throw new Error("Anthropic API key is required for this model");
       }
@@ -122,7 +129,7 @@ function createChatModel(
       });
 
     case "google":
-      const googleKey = apiKeys?.google || googleApiKey;
+      const googleKey = apiKeys?.Google || googleApiKey;
       if (!googleKey) {
         throw new Error("Google API key is required for this model");
       }
@@ -134,7 +141,7 @@ function createChatModel(
       });
 
     case "deepseek":
-      const deepseekKey = apiKeys?.deepseek || deepseekApiKey;
+      const deepseekKey = apiKeys?.DeepSeek || deepseekApiKey;
       if (!deepseekKey) {
         throw new Error("DeepSeek API key is required for this model");
       }
@@ -149,7 +156,7 @@ function createChatModel(
       logger.warn(
         `Unknown provider for model: ${modelName}. Falling back to OpenAI.`
       );
-      const fallbackKey = apiKeys?.openai || openAIApiKey;
+      const fallbackKey = apiKeys?.OpenAI || openAIApiKey;
       if (!fallbackKey) {
         throw new Error("OpenAI API key is required for fallback model");
       }
@@ -294,11 +301,11 @@ export async function retrieval({
       })
     )
   ).toString("base64");
-
   return new StreamingTextResponse(stream, {
     headers: {
       "x-message-index": (previousMessages.length + 1).toString(),
       "x-sources": serializedSources,
+      "x-model": selectedModel || "",
     },
   });
 }

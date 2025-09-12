@@ -1,5 +1,9 @@
 import { db } from "@/lib/db";
-import { messages as _messages, sources as _sources } from "@/lib/db/schema";
+import {
+  messages as _messages,
+  sources as _sources,
+  user_settings,
+} from "@/lib/db/schema";
 import { retrieval } from "@/lib/langchain";
 import { getUserSettings, updateUserSettings } from "@lib/account";
 import { Message } from "ai";
@@ -8,6 +12,7 @@ import { NextResponse } from "next/server";
 import * as Sentry from "@sentry/nextjs";
 import { VALID_MODELS } from "@/constants/models";
 import { logger } from "@lib/logger";
+import { eq } from "drizzle-orm";
 
 export const runtime = "edge";
 
@@ -91,9 +96,12 @@ export async function POST(req: Request) {
               content: currentMessageContent,
               role: "user",
             });
-            await updateUserSettings({
-              messageCount: messageCount + 1,
-            });
+            await db
+              .update(user_settings)
+              .set({
+                messageCount: messageCount + 1,
+              })
+              .where(eq(user_settings.userId, userId));
 
             // save ai message into db
             const completion = output.generations[0][0].text;
@@ -103,6 +111,7 @@ export async function POST(req: Request) {
                 chatId,
                 content: completion,
                 role: "system",
+                model: validatedModel,
               })
               .returning({
                 insertedId: _messages.id,

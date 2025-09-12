@@ -9,7 +9,7 @@ import { logger } from "@lib/logger";
 
 // LocalStorage keys
 const STORAGE_KEYS = {
-  API_KEYS: "chat-pdf-api-keys",
+  API_KEYS: "ask-pdf-api-keys",
 };
 
 // Utility functions for localStorage with encryption

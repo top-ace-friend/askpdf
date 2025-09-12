@@ -91,6 +91,7 @@ const FileUpload = () => {
       "application/pdf": [".pdf"],
     },
     maxFiles: 1,
+    disabled: isPending || isUploading,
     onDrop,
   });
 
@@ -109,8 +110,13 @@ const FileUpload = () => {
         <input {...getInputProps()} />
         {isPending || isUploading ? (
           <>
-            <Loader2 size={30} className="animate-spin text-slate-500" />
-            <p className="text-slate-400 mt-1">Spilling tea to AI...</p>
+            <Loader2
+              size={30}
+              className="animate-spin text-neutral-400 dark:text-neutral-500"
+            />
+            <p className="text-neutral-500 dark:text-neutral-400 mt-4">
+              Spilling tea to AI...
+            </p>
           </>
         ) : (
           <>

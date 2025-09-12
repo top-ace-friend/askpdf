@@ -19,6 +19,7 @@ import { useAppStore, ApiKeys } from "@/store/app-store";
 import { useUser } from "@clerk/nextjs";
 import toast from "react-hot-toast";
 import { logger } from "@lib/logger";
+import { Providers } from "@types";
 
 export default function SettingsDialog() {
   const { apiKeys, setApiKeys } = useAppStore();
@@ -64,6 +65,7 @@ export default function SettingsDialog() {
       toast.error("Failed to save API keys");
     } finally {
       setIsSaving(false);
+      setIsOpen(false);
     }
   };
 
@@ -93,33 +95,33 @@ export default function SettingsDialog() {
             label="OpenAI API Key"
             id="openai-api-key"
             placeholder="Enter your OpenAI API Key"
-            value={formData.openai || ""}
-            onChange={(value) => handleInputChange("openai", value)}
+            value={formData.OpenAI || ""}
+            onChange={(value) => handleInputChange(Providers.OpenAI, value)}
           />
           <APIKeyInput
             label="Anthropic API Key"
             id="anthropic-api-key"
             placeholder="Enter your Anthropic API Key"
-            value={formData.anthropic || ""}
-            onChange={(value) => handleInputChange("anthropic", value)}
+            value={formData.Anthropic || ""}
+            onChange={(value) => handleInputChange(Providers.Anthropic, value)}
           />
           <APIKeyInput
             label="Google API Key"
             id="google-api-key"
             placeholder="Enter your Google API Key"
-            value={formData.google || ""}
-            onChange={(value) => handleInputChange("google", value)}
+            value={formData.Google || ""}
+            onChange={(value) => handleInputChange(Providers.Google, value)}
           />
           <APIKeyInput
             label="DeepSeek API Key"
             id="deepseek-api-key"
             placeholder="Enter your DeepSeek API Key"
-            value={formData.deepseek || ""}
-            onChange={(value) => handleInputChange("deepseek", value)}
+            value={formData.DeepSeek || ""}
+            onChange={(value) => handleInputChange(Providers.DeepSeek, value)}
           />
           <div className="flex flex-col justify-end gap-2 mt-2">
             <Button onClick={handleSave} disabled={isSaving}>
-              Save
+              {isSaving ? "Saving..." : "Save"}
             </Button>
             <div className="flex items-center justify-center">
               <span className="text-sm text-neutral-700 dark:text-neutral-300">

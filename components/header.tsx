@@ -22,6 +22,7 @@ const Header = () => {
           alt="AskPDF Logo"
           width={100}
           height={100}
+          priority={false}
           className="w-[120px] h-auto"
         />
       </Link>
