@@ -22,20 +22,20 @@ import React from "react";
 
 interface AssistantMessageProps {
   message: Message;
-  messageIndex: number;
   copiedMessageId: string | null;
-  onCopy: (text: string, messageId: string) => void;
+  onCopy?: (text: string, messageId: string) => void;
   sources?: any;
   model?: string;
+  isResponding?: boolean;
 }
 
 const AssistantMessage: FunctionComponent<AssistantMessageProps> = ({
   message,
-  messageIndex,
   copiedMessageId,
   onCopy,
   sources,
   model,
+  isResponding,
 }) => {
   const getModelProviderIcon = (provider: Providers) => {
     switch (provider) {
@@ -82,14 +82,18 @@ const AssistantMessage: FunctionComponent<AssistantMessageProps> = ({
       </div>
       <div className={cn("flex flex-col gap-2 dark:text-neutral-300 relative")}>
         <MarkdownRenderer>{message.content}</MarkdownRenderer>
-        <div className="flex gap-3">
-          {sources && <SourcesDialog sources={sources} />}
-          <TooltipButton
-            icon={copiedMessageId === message.id ? Check : Clipboard}
-            tooltipText="Copy"
-            onClick={() => onCopy(message.content, message.id)}
-          />
-        </div>
+        {!isResponding && (
+          <div className="flex gap-3">
+            {sources && <SourcesDialog sources={sources} />}
+            {onCopy && (
+              <TooltipButton
+                icon={copiedMessageId === message.id ? Check : Clipboard}
+                tooltipText="Copy"
+                onClick={() => onCopy(message.content, message.id)}
+              />
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -108,37 +112,37 @@ const MarkdownRenderer = (props: any) => {
   const components = {
     code: CodeComponent,
     h1: ({ children, ...props }: any) => (
-      <h1 className="text-2xl font-semibold my-2 first:mt-0" {...props}>
+      <h1 className="text-2xl font-semibold my-2 first:my-0" {...props}>
         {children}
       </h1>
     ),
     h2: ({ children, ...props }: any) => (
-      <h2 className="text-xl font-semibold my-2 first:mt-0" {...props}>
+      <h2 className="text-xl font-semibold my-2 first:my-0" {...props}>
         {children}
       </h2>
     ),
     h3: ({ children, ...props }: any) => (
-      <h3 className="text-lg font-semibold my-2 first:mt-0" {...props}>
+      <h3 className="text-lg font-semibold my-2 first:my-0" {...props}>
         {children}
       </h3>
     ),
     h4: ({ children, ...props }: any) => (
-      <h4 className="text-base font-semibold my-2 first:mt-0" {...props}>
+      <h4 className="text-base font-semibold my-1.5 first:my-0" {...props}>
         {children}
       </h4>
     ),
     h5: ({ children, ...props }: any) => (
-      <h5 className="text-sm font-semibold my-2 first:mt-0" {...props}>
+      <h5 className="text-sm font-semibold my-1.5 first:my-0" {...props}>
         {children}
       </h5>
     ),
     h6: ({ children, ...props }: any) => (
-      <h6 className="text-xs font-semibold my-2 first:mt-0" {...props}>
+      <h6 className="text-xs font-semibold my-1.5 first:my-0" {...props}>
         {children}
       </h6>
     ),
     p: ({ children, ...props }: any) => (
-      <p className="my-2 last:mb-0 first:mt-0" {...props}>
+      <p className="my-1 last:mb-0 first:my-0" {...props}>
         {children}
       </p>
     ),

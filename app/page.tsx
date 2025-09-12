@@ -15,7 +15,7 @@ export default function Home() {
             <h1 className="text-5xl font-semibold text-neutral-900">
               Chat with PDF
             </h1>
-            <p className="max-w-2xl text-neutral-700 text-center">
+            <p className="max-w-2xl text-md text-neutral-700 text-center">
               Ask questions and receive instant responses from your PDFs.
               It&apos;s an easy-to-use tool for quick information retrieval.
             </p>

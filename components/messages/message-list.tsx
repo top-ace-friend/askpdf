@@ -11,16 +11,20 @@ interface MessageListProps {
   chatId: string;
   isLoading: boolean;
   isWaitingForResponse: boolean;
+  isResponding: boolean;
   sources?: Record<string, any>;
   models?: Record<string, string>;
+  pdfName?: string;
 }
 
 const MessageList: FunctionComponent<MessageListProps> = ({
   messages,
   isLoading,
   isWaitingForResponse = false,
+  isResponding = false,
   sources,
   models,
+  pdfName,
 }) => {
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
 
@@ -53,11 +57,39 @@ const MessageList: FunctionComponent<MessageListProps> = ({
     );
   }
 
+  // in markdown format
+  const welcomeMessage = `
+  Your file **${pdfName?.split(".")[0]}** has been successfully processed.
+  
+  I can help you with:
+  - Answering questions about the document content
+  - Summarizing the whole document or specific sections
+  - Finding relevant information quickly
+  - Explaining complex concepts from the document
+
+  Let's dive in!
+  `;
+
+  // Welcome message component
+  const WelcomeMessage = () => (
+    <AssistantMessage
+      message={{
+        id: "welcome-message",
+        content: welcomeMessage,
+        role: "assistant",
+      }}
+      copiedMessageId={null}
+    />
+  );
+
   return (
     <div
       className="flex flex-col p-6 h-full overflow-y-auto no-scrollbar"
       id="message-list"
     >
+      {/* Show welcome message if no messages exist */}
+      {messages.length === 0 && <WelcomeMessage />}
+
       {messages.map((m, i) => (
         <div key={m.id}>
           {m.role === "user" ? (
@@ -69,11 +101,11 @@ const MessageList: FunctionComponent<MessageListProps> = ({
           ) : (
             <AssistantMessage
               message={m}
-              messageIndex={i}
               copiedMessageId={copiedMessageId}
               onCopy={handleCopy}
               sources={sources && (sources[m.id] ?? sources[i])}
               model={models && (models[m.id] ?? models[i])}
+              isResponding={isResponding && i === messages.length - 1}
             />
           )}
         </div>

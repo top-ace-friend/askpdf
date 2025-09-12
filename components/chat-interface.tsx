@@ -68,8 +68,6 @@ const ChatInterface: FunctionComponent<ChatInterfaceProps> = ({
       },
       initialMessages: query.data?.messages || [],
       onResponse: (response) => {
-        setIsWaitingForResponse(false);
-
         updateMessageCount("increase", 1);
 
         const sourcesHeader = response.headers.get("x-sources");
@@ -94,6 +92,8 @@ const ChatInterface: FunctionComponent<ChatInterfaceProps> = ({
             }));
           }
         }
+
+        setIsWaitingForResponse(false);
       },
       onError: (error) => {
         const message = JSON.parse(error.message);
@@ -164,9 +164,11 @@ const ChatInterface: FunctionComponent<ChatInterfaceProps> = ({
           messages={messages}
           isLoading={query.isLoading}
           isWaitingForResponse={isWaitingForResponse}
+          isResponding={isLoading}
           // sources={sourcesForMessages}
           models={modelForMessages}
           chatId={chatId}
+          pdfName={currentChat.pdfName}
         />
         <form
           className={`flex gap-3 bg-neutral-50 dark:bg-neutral-900 px-3 pt-1 pb-5`}
