@@ -14,7 +14,7 @@ import { FileText, Loader2 } from "lucide-react";
 
 const FileUpload = () => {
   const router = useRouter();
-  const { chats, addChat, addChunks } = useAppStore();
+  const { addChat, addChunks } = useAppStore();
 
   const [isUploading, setIsUploading] = useState(false);
 
@@ -147,7 +147,7 @@ const FileUpload = () => {
         ) : (
           <>
             <FileText
-              size={85}
+              size={65}
               strokeWidth={1}
               className={cn("text-neutral-800 dark:text-neutral-200", {
                 "opacity-50": isDragActive,

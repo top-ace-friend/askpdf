@@ -1,15 +1,7 @@
 "use client";
 
-import { Loader2, MessageSquarePlus, Trash } from "lucide-react";
+import { MessageSquarePlus, Trash } from "lucide-react";
 import { Button } from "./ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "./ui/dialog";
 import { LocalChat } from "@/store/app-store";
 import { useRouter } from "next/navigation";
 import { MouseEventHandler, useState } from "react";
@@ -19,6 +11,7 @@ import toast from "react-hot-toast";
 import { useAppStore } from "@store/app-store";
 import dayjs from "dayjs";
 import { cn } from "@lib/utils";
+import DeleteChatDialog from "./dialogs/delete-chat-dialog";
 
 interface ChatSideBarProps {}
 
@@ -147,44 +140,14 @@ const ChatSideBar = ({}: ChatSideBarProps) => {
       </div>
 
       {/* Delete Confirmation Dialog */}
-      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Delete Chat</DialogTitle>
-            <DialogDescription>
-              <p className="mt-2">
-                Are you sure you want to delete this chat with{" "}
-                <span className="font-semibold">{chatToDelete?.pdfName}</span>?
-                This action cannot be undone and will permanently remove all
-                messages in this conversation.
-              </p>
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={cancelDeleteChat}
-              disabled={isPending}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={confirmDeleteChat}
-              disabled={isPending}
-            >
-              {isPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Deleting...
-                </>
-              ) : (
-                "Delete Chat"
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <DeleteChatDialog
+        showDeleteDialog={showDeleteDialog}
+        setShowDeleteDialog={setShowDeleteDialog}
+        pdfName={chatToDelete?.pdfName || ""}
+        cancelDeleteChat={cancelDeleteChat}
+        confirmDeleteChat={confirmDeleteChat}
+        isPending={isPending}
+      />
     </div>
   );
 };

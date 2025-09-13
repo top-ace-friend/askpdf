@@ -18,7 +18,7 @@ export interface LocalMessage {
   chatId: string;
   content: string;
   createdAt: string;
-  role: "system" | "user";
+  role: "system" | "user" | "assistant";
   model?: string;
 }
 

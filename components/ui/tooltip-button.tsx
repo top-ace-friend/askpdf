@@ -5,7 +5,6 @@ import {
   TooltipContent,
 } from "./tooltip";
 import { FunctionComponent } from "react";
-import { Button } from "./button";
 import { cn } from "@lib/utils";
 
 interface TooltipButtonProps {
@@ -24,13 +23,11 @@ const TooltipButton: FunctionComponent<
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger>
-          <Button
-            variant="ghost"
+          <div
             className={cn(
               "bg-transparent hover:bg-transparent p-0 w-fit h-fit",
               className
             )}
-            size="sm"
             onClick={onClick}
           >
             <Icon
@@ -40,7 +37,7 @@ const TooltipButton: FunctionComponent<
                 iconClassName
               )}
             />
-          </Button>
+          </div>
         </TooltipTrigger>
         <TooltipContent {...props}>
           <p className="text-sm">{tooltipText}</p>

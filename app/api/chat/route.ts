@@ -1,4 +1,4 @@
-import { retrieval } from "@/lib/langchain";
+import { retrieval } from "@/lib/langchain/retrieval";
 import { Message } from "ai";
 import { NextResponse } from "next/server";
 import { VALID_MODELS } from "@/constants/models";
@@ -41,7 +41,6 @@ export async function POST(req: Request) {
       chatHistory,
       previousMessages,
       fileKey,
-      isAdmin: true, // No usage restrictions in open source version
       selectedModel: validatedModel,
       apiKeys,
       localChunks,
