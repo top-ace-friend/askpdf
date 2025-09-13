@@ -53,7 +53,7 @@ const TooltipIcon = ({
             <Icon
               size={15}
               className={cn(
-                "text-neutral-600 dark:text-neutral-400",
+                "text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-300",
                 iconClassName
               )}
             />

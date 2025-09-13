@@ -1,81 +1,74 @@
 "use client";
 
-import axios from "axios";
 import { FunctionComponent, useEffect, useState } from "react";
 import { useChat } from "ai/react";
-import { useQuery } from "@tanstack/react-query";
 import { Loader2, CornerDownRight } from "lucide-react";
-import { SafeChat, messages } from "@/lib/db/schema";
+import { LocalChat, LocalMessage } from "@/store/app-store";
 import { Button } from "./ui/button";
 import MessageList from "./messages/message-list";
 import { Textarea } from "./ui/textarea";
-import LimitReachedDialog from "./dialogs/limit-reached-dialog";
 import ModelSelector from "./model-selector";
 import { useAppStore } from "@store/app-store";
-import { useDbEvents } from "@providers/db-events-provider";
 import toast from "react-hot-toast";
+import { logger } from "@lib/logger";
 
 interface ChatInterfaceProps {
-  currentChat: SafeChat;
+  currentChat: LocalChat;
 }
 
 const ChatInterface: FunctionComponent<ChatInterfaceProps> = ({
   currentChat,
 }) => {
   const chatId = currentChat.id;
-  const { settings } = useDbEvents();
-  const {
-    isUsageRestricted,
-    messageCount,
-    isAdmin,
-    freeMessages,
-    setCurrentChatId,
-    updateMessageCount,
-    selectedModel,
-    apiKeys,
-  } = useAppStore();
+  const { getMessages, addMessage, selectedModel, apiKeys, getChunks } =
+    useAppStore();
 
-  const messageLimit = freeMessages || Number(settings?.free_messages);
+  // Get messages from local store instead of API
+  const chatMessages = getMessages(chatId);
 
-  const query = useQuery({
-    queryKey: ["chat", chatId],
-    queryFn: async () => {
-      const response = await axios.post("/api/get-messages", {
-        chatId,
-      });
-      return response.data;
-    },
-  });
+  const query = {
+    data: { messages: chatMessages, sources: [] },
+    isLoading: false,
+    error: null,
+  };
 
   const [sourcesForMessages, setSourcesForMessages] = useState<
     Record<string, any>
   >({});
-  const [showLimitDialog, setShowLimitDialog] = useState(false);
   const [isWaitingForResponse, setIsWaitingForResponse] = useState(false);
   const [modelForMessages, setModelForMessages] = useState<
     Record<string, string>
   >({});
+  const [keywordsForMessages, setKeywordsForMessages] = useState<
+    Record<string, string[]>
+  >({});
+
+  // Get chunks for the current file
+  const localChunks = getChunks(currentChat.fileKey);
 
   const { messages, input, isLoading, handleInputChange, handleSubmit } =
     useChat({
       body: {
         fileKey: currentChat.fileKey,
         chatId,
-        messageCount,
-        isAdmin,
         selectedModel,
         apiKeys,
+        localChunks,
       },
-      initialMessages: query.data?.messages || [],
+      initialMessages:
+        chatMessages.map((msg) => ({
+          id: msg.id,
+          content: msg.content,
+          role: msg.role as "user" | "assistant",
+          createdAt: new Date(msg.createdAt),
+        })) || [],
       onResponse: (response) => {
-        updateMessageCount("increase", 1);
-
         const sourcesHeader = response.headers.get("x-sources");
-        const sources = sourcesHeader
-          ? JSON.parse(Buffer.from(sourcesHeader, "base64").toString("utf8"))
-          : [];
+        const sources = sourcesHeader ? JSON.parse(atob(sourcesHeader)) : [];
         const messageIndexHeader = response.headers.get("x-message-index");
         const modelHeader = response.headers.get("x-model");
+        const keywordsHeader = response.headers.get("x-keywords");
+
         if (messageIndexHeader) {
           if (sources.length) {
             setSourcesForMessages({
@@ -91,48 +84,63 @@ const ChatInterface: FunctionComponent<ChatInterfaceProps> = ({
               [messageIndexHeader]: modelHeader,
             }));
           }
+
+          // Store extracted keywords for debugging/display
+          if (keywordsHeader) {
+            try {
+              const keywords = JSON.parse(atob(keywordsHeader));
+              setKeywordsForMessages((prev) => ({
+                ...prev,
+                [messageIndexHeader]: keywords,
+              }));
+              logger.info("Keywords used for search:", keywords);
+            } catch (error) {
+              logger.warn("Failed to parse keywords header:", error);
+            }
+          }
         }
 
         setIsWaitingForResponse(false);
       },
       onError: (error) => {
-        const message = JSON.parse(error.message);
-        if (typeof message.error === "string") {
-          toast.error(message.error, {
-            position: "bottom-right",
-            duration: 5000,
-          });
-        } else {
-          toast.error("Something went wrong", {
-            position: "bottom-right",
-            duration: 5000,
-          });
-        }
+        toast.error("Something went wrong", {
+          position: "bottom-right",
+          duration: 5000,
+        });
+      },
+      onFinish: (message) => {
+        // Save the message to local store
+        const newMessage: LocalMessage = {
+          id: crypto.randomUUID(),
+          chatId: chatId,
+          content: message.content,
+          createdAt: new Date().toISOString(),
+          role: "system",
+          model: selectedModel,
+        };
+        addMessage(newMessage);
       },
     });
 
-  useEffect(() => {
-    setCurrentChatId(chatId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // Chat ID is handled by the parent component
 
   // Extract model information from database messages
-  useEffect(() => {
-    if (query.data?.messages) {
-      const modelMap: Record<string, string> = {};
-      query.data.messages.forEach((msg: any) => {
-        if (msg.model) {
-          modelMap[msg.id] = msg.model;
-        }
-      });
-      setModelForMessages(modelMap);
-    }
-  }, [query.data?.messages]);
+  // useEffect(() => {
+  //   if (query.data?.messages) {
+  //     const modelMap: Record<string, string> = {};
+  //     query.data.messages.forEach((msg: any) => {
+  //       if (msg.model) {
+  //         modelMap[msg.id] = msg.model;
+  //       }
+  //     });
+  //     setModelForMessages(modelMap);
+  //   }
+  // }, [query.data?.messages]);
 
   // useEffect(() => {
   //   if (query.data?.sources) {
   //     const msgSources = query.data?.sources
-  //       ? (query.data?.sources as SafeSource[]).reduce(
+  //       ? (query.data?.sources as { [key: string]: any }[]).reduce(
   //           (a, v) => ({ ...a, [v.messageId]: v.data }),
   //           {}
   //         )
@@ -142,11 +150,18 @@ const ChatInterface: FunctionComponent<ChatInterfaceProps> = ({
   // }, [query.data?.sources]);
 
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    if (isUsageRestricted && messageCount === messageLimit) {
-      e.preventDefault();
-      setShowLimitDialog(true);
-      return;
+    // Save user message to local store first
+    if (input.trim()) {
+      const userMessage: LocalMessage = {
+        id: crypto.randomUUID(),
+        chatId: chatId,
+        content: input,
+        createdAt: new Date().toISOString(),
+        role: "user",
+      };
+      addMessage(userMessage);
     }
+
     setIsWaitingForResponse(true);
     handleSubmit(e);
   };
@@ -209,12 +224,6 @@ const ChatInterface: FunctionComponent<ChatInterfaceProps> = ({
           </div>
         </form>
       </div>
-
-      <LimitReachedDialog
-        type="message"
-        open={showLimitDialog}
-        setOpen={setShowLimitDialog}
-      />
     </>
   );
 };

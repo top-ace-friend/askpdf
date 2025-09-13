@@ -57,25 +57,13 @@ const MessageList: FunctionComponent<MessageListProps> = ({
     );
   }
 
-  // in markdown format
-  const welcomeMessage = `
-  Your file **${pdfName?.split(".")[0]}** has been successfully processed.
-  
-  I can help you with:
-  - Answering questions about the document content
-  - Summarizing the whole document or specific sections
-  - Finding relevant information quickly
-  - Explaining complex concepts from the document
-
-  Let's dive in!
-  `;
-
   // Welcome message component
   const WelcomeMessage = () => (
     <AssistantMessage
       message={{
         id: "welcome-message",
-        content: welcomeMessage,
+        content:
+          "Remember to add the API keys in the settings.\n\nGet started by asking a question about your document.",
         role: "assistant",
       }}
       copiedMessageId={null}
