@@ -16,17 +16,14 @@ import { OpenAIIcon } from "./icons/openai-icon";
 import { ClaudeIcon } from "./icons/claude-icon";
 import { GeminiIcon } from "./icons/gemini-icon";
 import { DeepSeekIcon } from "./icons/deepseek-icon";
-import { Providers, ModelTypes } from "@types";
+import { Providers } from "@types";
 
 interface ModelSelectorProps {
   className?: string;
 }
 
 const ModelSelector = ({ className }: ModelSelectorProps) => {
-  const { apiKeys } = useAppStore();
-
   const { selectedModel, setSelectedModel } = useAppStore();
-  const [tooltipVisible, setTooltipVisible] = useState<string | null>(null);
 
   const handleModelChange = (value: string) => {
     setSelectedModel(value);
@@ -53,7 +50,7 @@ const ModelSelector = ({ className }: ModelSelectorProps) => {
 
   return (
     <div className={className}>
-      <Select value={selectedModel} onValueChange={handleModelChange}>
+      <Select value={selectedModel} onValueChange={handleModelChange} disabled>
         <SelectTrigger className="w-full gap-2">
           <SelectValue placeholder="Select model">
             <div className="flex items-center gap-1.5">

@@ -4,16 +4,19 @@ import { Loader2 } from "lucide-react";
 import { FunctionComponent, useEffect, useState } from "react";
 import UserMessage from "./user-message";
 import AssistantMessage from "./assistant-message";
-import { Message } from "ai";
+import { UIMessage } from "ai";
+import {
+  getMessageContent,
+  getMessageSources,
+  getMessageModel,
+} from "@/lib/message-utils";
 
 interface MessageListProps {
-  messages: Message[];
+  messages: UIMessage[];
   chatId: string;
   isLoading: boolean;
   isWaitingForResponse: boolean;
   isResponding: boolean;
-  sources?: Record<string, any>;
-  models?: Record<string, string>;
   pdfName?: string;
 }
 
@@ -22,8 +25,6 @@ const MessageList: FunctionComponent<MessageListProps> = ({
   isLoading,
   isWaitingForResponse = false,
   isResponding = false,
-  sources,
-  models,
   pdfName,
 }) => {
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
@@ -62,9 +63,13 @@ const MessageList: FunctionComponent<MessageListProps> = ({
     <AssistantMessage
       message={{
         id: "welcome-message",
-        content:
-          "Remember to add the API keys in the settings.\n\nGet started by asking a question about your document.",
         role: "assistant",
+        parts: [
+          {
+            type: "text",
+            text: "Remember to add the API keys in the settings.\n\nGet started by asking a question about your document.",
+          },
+        ],
       }}
       copiedMessageId={null}
     />
@@ -91,8 +96,8 @@ const MessageList: FunctionComponent<MessageListProps> = ({
               message={m}
               copiedMessageId={copiedMessageId}
               onCopy={handleCopy}
-              sources={sources && (sources[m.id] ?? sources[i])}
-              model={models && (models[m.id] ?? models[i])}
+              sources={getMessageSources(m)}
+              model={getMessageModel(m)}
               isResponding={isResponding && i === messages.length - 1}
             />
           )}

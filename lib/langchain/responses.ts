@@ -9,7 +9,6 @@ import { ApiKeys, DocumentChunk, Source } from "@/types";
 import { createStreamingModel } from "./models";
 import { Document } from "@langchain/core/documents";
 import { createSearchTools, searchLocalChunks } from "./tools";
-import { StreamingTextResponse } from "ai";
 
 const answerPrompt = PromptTemplate.fromTemplate(ANSWER_TEMPLATE);
 const simpleChatPrompt = PromptTemplate.fromTemplate(SIMPLE_CHAT_TEMPLATE);
@@ -19,9 +18,9 @@ export const combineDocumentsFn = (docs: Document[]) => {
   return serializedDocs.join("\n\n");
 };
 
-// Helper function to create streaming ReadableStream with data parts embedded
+// Helper function to convert LangChain chain stream to ReadableStream
 export function createStreamingTextStream(
-  stream: ReadableStream,
+  stream: any, // LangChain chain stream (AsyncIterable)
   customData: {
     sources?: Source[];
     model?: string;
@@ -29,16 +28,64 @@ export function createStreamingTextStream(
     messageIndex?: number;
   }
 ) {
-  return new StreamingTextResponse(stream, {
-    headers: {
-      "x-sources": Buffer.from(JSON.stringify(customData.sources)).toString(
-        "base64"
-      ),
-      "x-model": customData.model || "",
-      "x-keywords": Buffer.from(JSON.stringify(customData.keywords)).toString(
-        "base64"
-      ),
-      "x-message-index": customData.messageIndex?.toString() || "",
+  // Convert Uint8Array stream to LangChainAIMessageChunk stream with custom data
+  return new ReadableStream({
+    async start(controller) {
+      try {
+        // First, process all the text chunks
+        for await (const chunk of stream) {
+          if (chunk instanceof Uint8Array) {
+            // Convert Uint8Array to LangChainAIMessageChunk format
+            const content = new TextDecoder().decode(chunk);
+            const aiMessageChunk = {
+              content: content,
+              type: "AIMessageChunk" as const,
+            };
+            controller.enqueue(aiMessageChunk);
+          }
+        }
+
+        // After text is complete, add custom data as data chunks
+        if (customData.sources && customData.sources.length > 0) {
+          const sourcesData = {
+            event: "data-sources",
+            data: {
+              type: "sources",
+              sources: customData.sources,
+            },
+          };
+          console.log("📊 Adding sources data:", sourcesData);
+          controller.enqueue(sourcesData);
+        }
+
+        if (customData.model) {
+          const modelData = {
+            event: "data-model",
+            data: {
+              type: "model",
+              model: customData.model,
+            },
+          };
+          console.log("🤖 Adding model data:", modelData);
+          controller.enqueue(modelData);
+        }
+
+        if (customData.keywords && customData.keywords.length > 0) {
+          const keywordsData = {
+            event: "data-keywords",
+            data: {
+              type: "keywords",
+              keywords: customData.keywords,
+            },
+          };
+          console.log("🔑 Adding keywords data:", keywordsData);
+          controller.enqueue(keywordsData);
+        }
+
+        controller.close();
+      } catch (error) {
+        controller.error(error);
+      }
     },
   });
 }

@@ -1,8 +1,10 @@
 import { retrieval } from "@/lib/langchain/retrieval";
-import { Message } from "ai";
 import { NextResponse } from "next/server";
 import { VALID_MODELS } from "@/constants/models";
 import { logger } from "@lib/logger";
+import { getMessageContent } from "@/lib/message-utils";
+import { toUIMessageStream } from "@ai-sdk/langchain";
+import { createUIMessageStreamResponse, UIMessage } from "ai";
 
 export const runtime = "edge";
 
@@ -11,20 +13,24 @@ function validateModel(selectedModel?: string): string | undefined {
   return VALID_MODELS.includes(selectedModel) ? selectedModel : undefined;
 }
 
-const formatMessages = (messages: Message[]) => {
+const formatMessages = (messages: UIMessage[]) => {
   const formattedMessages = messages.map(
     (message) =>
-      `${message.role === "user" ? "Human" : "Assistant"}: ${message.content}`
+      `${message.role === "user" ? "Human" : "Assistant"}: ${getMessageContent(
+        message
+      )}`
   );
   return formattedMessages.join("/n");
 };
 
 export async function POST(req: Request) {
   try {
-    const { messages, fileKey, chatId, selectedModel, apiKeys, localChunks } =
+    const { messages, fileKey, selectedModel, apiKeys, localChunks } =
       await req.json();
 
-    const currentMessageContent = messages[messages.length - 1].content;
+    const currentMessageContent = getMessageContent(
+      messages[messages.length - 1]
+    );
     const previousMessages = messages.slice(0, -1);
     const chatHistory = formatMessages(previousMessages);
 
@@ -34,7 +40,7 @@ export async function POST(req: Request) {
       logger.warn(`Invalid model received: ${selectedModel}. Using default.`);
     }
 
-    let sources: { content: string; pageNumber: number }[] = [];
+    let sources: string = "";
 
     const streamingtextResponse = await retrieval({
       question: currentMessageContent,
@@ -46,10 +52,11 @@ export async function POST(req: Request) {
       localChunks,
       streamCallbacks: {
         handleRetrieverEnd: (documents) => {
-          sources = documents.map((d) => ({
-            content: d.pageContent,
-            pageNumber: d.metadata.pageNumber,
-          }));
+          sources = Buffer.from(
+            JSON.stringify(
+              documents.map((document) => document.metadata.pageNumber)
+            )
+          ).toString("base64");
         },
         handleLLMEnd: async (output) => {
           // In open source version, message storage is handled client-side
@@ -59,8 +66,14 @@ export async function POST(req: Request) {
       },
     });
 
-    // Return a StreamingTextResponse, which can be consumed by the client
-    return streamingtextResponse;
+    // Convert LangChain stream to AI SDK v5 format
+    return createUIMessageStreamResponse({
+      stream: toUIMessageStream(streamingtextResponse),
+      headers: {
+        "x-model-name": selectedModel || "",
+        "x-sources": sources,
+      },
+    });
   } catch (err) {
     logger.error("Error generating reply:", err);
     return NextResponse.json(

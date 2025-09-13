@@ -166,8 +166,11 @@ export function createSearchTools(
         }));
 
         logger.info(
-          `Found ${searchResults.length} relevant chunks using keywords:`,
-          searchResults
+          `Found ${
+            searchResults.length
+          } relevant chunks using keywords on pages: ${searchResults
+            .map((result) => result.pageNumber)
+            .join(", ")}`
         );
         return JSON.stringify(searchResults);
       } catch (error) {

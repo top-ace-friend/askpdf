@@ -14,14 +14,15 @@ import { ClaudeIcon } from "@components/icons/claude-icon";
 import { DeepSeekIcon } from "@components/icons/deepseek-icon";
 import { GeminiIcon } from "@components/icons/gemini-icon";
 import { OpenAIIcon } from "@components/icons/openai-icon";
-import { Message } from "ai";
+import { UIMessage } from "ai";
 import RemarkMathPlugin from "remark-math";
 import rehypeKatex from "rehype-katex";
 import ReactMarkdown from "react-markdown";
+import { getMessageContent } from "@/lib/message-utils";
 import React from "react";
 
 interface AssistantMessageProps {
-  message: Message;
+  message: UIMessage;
   copiedMessageId: string | null;
   onCopy?: (text: string, messageId: string) => void;
   sources?: any;
@@ -81,7 +82,7 @@ const AssistantMessage: FunctionComponent<AssistantMessageProps> = ({
         </p>
       </div>
       <div className={cn("flex flex-col gap-2 dark:text-neutral-300 relative")}>
-        <MarkdownRenderer>{message.content}</MarkdownRenderer>
+        <MarkdownRenderer>{getMessageContent(message)}</MarkdownRenderer>
         {!isResponding && (
           <div className="flex gap-3">
             {sources && <SourcesDialog sources={sources} />}
@@ -89,7 +90,7 @@ const AssistantMessage: FunctionComponent<AssistantMessageProps> = ({
               <TooltipButton
                 icon={copiedMessageId === message.id ? Check : Clipboard}
                 tooltipText="Copy"
-                onClick={() => onCopy(message.content, message.id)}
+                onClick={() => onCopy(getMessageContent(message), message.id)}
               />
             )}
           </div>
