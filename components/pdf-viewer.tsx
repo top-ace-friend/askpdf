@@ -47,10 +47,7 @@ const PdfViewer: FunctionComponent<PdfViewerProps> = ({
         ),
       }}
     >
-      <iframe
-        src={`https://docs.google.com/gview?url=${pdfUrl}&embedded=true`}
-        className="w-full h-full rounded-md"
-      />
+      <iframe width="100%" height="100%" src={pdfUrl} className="rounded-md" />
     </Resizable>
   );
 };
