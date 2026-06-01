@@ -4,39 +4,39 @@ import axios from "axios";
 import { useCallback, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import toast from "react-hot-toast";
-import { uploadToS3 } from "@/lib/s3";
 import { useMutation } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { logger } from "@lib/logger";
-import LimitReachedDialog from "./dialogs/limit-reached-dialog";
-import { useAppStore } from "@store/app-store";
-import { SafeChat } from "@lib/db/schema";
-import { useDbEvents } from "@providers/db-events-provider";
+import { DocumentChunk, LocalChat, useAppStore } from "@store/app-store";
+import { fileStorage } from "@/lib/file-storage";
 import { cn } from "@/lib/utils";
-import { PdfIcon } from "./icons/pdf-icon";
-import { FileUploadIcon } from "./icons/file-upload-icon";
+import { FileText, Loader2 } from "lucide-react";
 
 const FileUpload = () => {
   const router = useRouter();
-  const { settings } = useDbEvents();
-  const { freeChats, isUsageRestricted, fileCount, addChat } = useAppStore();
-
-  const chatLimit = freeChats || Number(settings?.free_chats);
+  const { addChat, addChunks } = useAppStore();
 
   const [isUploading, setIsUploading] = useState(false);
-  const [showLimitDialog, setShowLimitDialog] = useState(false);
 
   const { mutate, isPending } = useMutation({
     mutationFn: async ({
       file_key,
       file_name,
+      file,
     }: {
       file_key: string;
       file_name: string;
+      file: File;
     }) => {
-      const response = await axios.post("/api/create-chat", {
-        file_key,
-        file_name,
+      const formData = new FormData();
+      formData.append("file_key", file_key);
+      formData.append("file_name", file_name);
+      formData.append("file", file);
+
+      const response = await axios.post("/api/create-chat", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
       });
       return response.data;
     },
@@ -44,45 +44,74 @@ const FileUpload = () => {
 
   const onDrop = useCallback(
     async (acceptedFiles: any) => {
-      if (isUsageRestricted && fileCount === chatLimit) {
-        setShowLimitDialog(true);
-        return;
-      }
-
       const file = acceptedFiles[0];
-      if (file.size > 5 * 1024 * 1024) {
-        // bigger than 5mb
-        toast.error("File too large");
+      if (file.size > 10 * 1024 * 1024) {
+        // bigger than 10mb
+        toast.error("File too large (max 10MB)");
         return;
       } else {
         try {
           setIsUploading(true);
-          const data = await uploadToS3(file);
-          if (!data?.file_key || !data.file_name) {
-            toast.error("Something went wrong");
-            return;
-          }
+
+          // Create a file key and blob URL for local storage
+          const fileKey =
+            "local_" +
+            Date.now().toString() +
+            "_" +
+            file.name.replace(/\s+/g, "-");
+
+          const data = {
+            file_key: fileKey,
+            file_name: file.name,
+            file: file,
+          };
+
           mutate(data, {
-            onSuccess: ({ chat }: { chat: SafeChat }) => {
-              toast.success("Uploaded file successfully");
-              addChat(chat);
-              router.push(`/chat/${chat.id}`);
+            onSuccess: async ({
+              chat,
+              chunks,
+            }: {
+              chat: LocalChat;
+              chunks: DocumentChunk[];
+            }) => {
+              try {
+                toast.success("File uploaded successfully");
+
+                // Store file in IndexedDB
+                await fileStorage.storeFile(chat.fileKey, file);
+
+                const chatWithUrl = {
+                  ...chat,
+                  pdfUrl: "", // Don't store temporary blob URL
+                };
+
+                addChat(chatWithUrl);
+
+                // Add chunks to store if they exist
+                if (chunks && chunks.length > 0) {
+                  addChunks(chunks);
+                  logger.info(`Added ${chunks.length} chunks to store`);
+                }
+
+                router.push(`/chat/${chat.id}`);
+              } catch (error) {
+                logger.error("Error storing file:", error);
+                toast.error("Error storing file locally");
+              }
             },
             onError: () => {
               toast.error("Error creating chat");
             },
           });
         } catch (error) {
-          logger.error("Error uploading file:", {
-            error,
-          });
+          logger.error("Error processing file:", error);
+          toast.error("Error processing file");
         } finally {
           setIsUploading(false);
         }
       }
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [mutate, router, fileCount, chatLimit, isUsageRestricted]
+    [mutate, router, addChat, addChunks]
   );
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -110,20 +139,21 @@ const FileUpload = () => {
         <input {...getInputProps()} />
         {isPending || isUploading ? (
           <>
-            <FileUploadIcon size={85} />
+            <Loader2 size={35} strokeWidth={1.5} className="animate-spin" />
             <p className="text-lg font-semibold text-neutral-900 dark:text-neutral-200 mt-4">
               Spilling tea to AI...
             </p>
           </>
         ) : (
           <>
-            <PdfIcon
-              size={85}
-              className={cn({
+            <FileText
+              size={65}
+              strokeWidth={1}
+              className={cn("text-neutral-800 dark:text-neutral-200", {
                 "opacity-50": isDragActive,
               })}
             />
-            <p className="text-lg font-semibold text-neutral-900 dark:text-neutral-200 mt-4">
+            <p className="text-lg text-center font-semibold text-neutral-900 dark:text-neutral-200 mt-4">
               {isDragActive
                 ? "Drop your file here"
                 : "Drag and drop your file here or click to select file"}
@@ -133,17 +163,11 @@ const FileUpload = () => {
                 Supported file types: PDF
               </p>
               <p className="text-neutral-400 dark:text-neutral-500">
-                Max file size: 5MB
+                Max file size: 10MB
               </p>
             </div>
           </>
         )}
-
-        <LimitReachedDialog
-          type="file"
-          open={showLimitDialog}
-          setOpen={setShowLimitDialog}
-        />
       </div>
     </div>
   );

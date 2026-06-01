@@ -2,16 +2,53 @@
 
 import { FunctionComponent, useEffect, useState } from "react";
 import { Resizable } from "re-resizable";
+import { useAppStore } from "@/store/app-store";
+import { logger } from "@/lib/logger";
 
 interface PdfViewerProps {
-  pdfUrl: string;
+  fileKey: string;
 }
 
 const PdfViewer: FunctionComponent<PdfViewerProps> = ({
-  pdfUrl,
+  fileKey,
 }: PdfViewerProps) => {
   const [width, setWidth] = useState(0);
   const [maxWidth, setMaxWidth] = useState(window.innerWidth - 826);
+  const [activePdfUrl, setActivePdfUrl] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const { getBlobUrlForChat } = useAppStore();
+
+  // Always load PDF from IndexedDB using fileKey
+  useEffect(() => {
+    const loadPdfFromStorage = async () => {
+      if (!fileKey) {
+        logger.error("No fileKey provided for PDF loading");
+        setActivePdfUrl(null);
+        return;
+      }
+
+      setIsLoading(true);
+
+      try {
+        logger.info("Loading PDF from IndexedDB for fileKey:", fileKey);
+        const blobUrl = await getBlobUrlForChat(fileKey);
+        if (blobUrl) {
+          setActivePdfUrl(blobUrl);
+          logger.info("PDF loaded successfully from IndexedDB");
+        } else {
+          logger.error("Failed to load PDF from storage");
+          setActivePdfUrl(null);
+        }
+      } catch (error) {
+        logger.error("Error loading PDF from storage:", error);
+        setActivePdfUrl(null);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadPdfFromStorage();
+  }, [fileKey, getBlobUrlForChat]);
 
   useEffect(() => {
     window.addEventListener("resize", () => {

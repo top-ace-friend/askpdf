@@ -16,17 +16,14 @@ import { OpenAIIcon } from "./icons/openai-icon";
 import { ClaudeIcon } from "./icons/claude-icon";
 import { GeminiIcon } from "./icons/gemini-icon";
 import { DeepSeekIcon } from "./icons/deepseek-icon";
-import { Providers, ModelTypes } from "@types";
+import { Providers } from "@types";
 
 interface ModelSelectorProps {
   className?: string;
 }
 
 const ModelSelector = ({ className }: ModelSelectorProps) => {
-  const { apiKeys } = useAppStore();
-
   const { selectedModel, setSelectedModel } = useAppStore();
-  const [tooltipVisible, setTooltipVisible] = useState<string | null>(null);
 
   const handleModelChange = (value: string) => {
     setSelectedModel(value);
@@ -53,7 +50,7 @@ const ModelSelector = ({ className }: ModelSelectorProps) => {
 
   return (
     <div className={className}>
-      <Select value={selectedModel} onValueChange={handleModelChange}>
+      <Select value={selectedModel} onValueChange={handleModelChange} disabled>
         <SelectTrigger className="w-full gap-2">
           <SelectValue placeholder="Select model">
             <div className="flex items-center gap-1.5">
@@ -69,10 +66,6 @@ const ModelSelector = ({ className }: ModelSelectorProps) => {
                 {option}
               </SelectLabel>
               {MODEL_OPTIONS[option as Providers].map((option) => {
-                const isProModel = option.modelType === ModelTypes.Pro;
-                const isProModelDisabled =
-                  isProModel && !apiKeys[option.provider as keyof ApiKeys];
-
                 const selectItemContent = (
                   <div className="flex flex-col">
                     <div className="flex items-center gap-2">
@@ -80,11 +73,6 @@ const ModelSelector = ({ className }: ModelSelectorProps) => {
                       <div className="flex flex-col">
                         <div className="flex items-center gap-2">
                           <span className="font-medium">{option.label}</span>
-                          {isProModel && (
-                            <span className="text-xs px-1.5 py-0.5 bg-purple-custom-300 dark:bg-purple-custom-800 rounded-full text-neutral-900 dark:text-neutral-200">
-                              {option.modelType}
-                            </span>
-                          )}
                         </div>
                         <span className="text-xs text-muted-foreground">
                           {option.description}
@@ -94,34 +82,11 @@ const ModelSelector = ({ className }: ModelSelectorProps) => {
                   </div>
                 );
 
-                if (isProModelDisabled) {
-                  return (
-                    <div
-                      key={option.value}
-                      className="relative"
-                      onMouseEnter={() => setTooltipVisible(option.value)}
-                      onMouseLeave={() => setTooltipVisible(null)}
-                    >
-                      <SelectItem
-                        value={option.value}
-                        disabled={isProModelDisabled}
-                      >
-                        {selectItemContent}
-                      </SelectItem>
-                      {tooltipVisible === option.value && (
-                        <div className="absolute left-1/2 transform -translate-x-1/2 bottom-full bg-neutral-600 text-white text-xs px-2 py-1 rounded shadow-lg z-100 whitespace-nowrap">
-                          Add your API key to use this model
-                        </div>
-                      )}
-                    </div>
-                  );
-                } else {
-                  return (
-                    <SelectItem key={option.value} value={option.value}>
-                      {selectItemContent}
-                    </SelectItem>
-                  );
-                }
+                return (
+                  <SelectItem key={option.value} value={option.value}>
+                    {selectItemContent}
+                  </SelectItem>
+                );
               })}
             </SelectGroup>
           ))}

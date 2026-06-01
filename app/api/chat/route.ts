@@ -1,18 +1,10 @@
-import { db } from "@/lib/db";
-import {
-  messages as _messages,
-  sources as _sources,
-  user_settings,
-} from "@/lib/db/schema";
-import { retrieval } from "@/lib/langchain";
-import { getUserSettings, updateUserSettings } from "@lib/account";
-import { Message } from "ai";
-import { auth } from "@clerk/nextjs/server";
+import { retrieval } from "@/lib/langchain/retrieval";
 import { NextResponse } from "next/server";
-import * as Sentry from "@sentry/nextjs";
 import { VALID_MODELS } from "@/constants/models";
 import { logger } from "@lib/logger";
-import { eq } from "drizzle-orm";
+import { getMessageContent } from "@/lib/message-utils";
+import { toUIMessageStream } from "@ai-sdk/langchain";
+import { createUIMessageStreamResponse, UIMessage } from "ai";
 
 export const runtime = "edge";
 
@@ -21,45 +13,24 @@ function validateModel(selectedModel?: string): string | undefined {
   return VALID_MODELS.includes(selectedModel) ? selectedModel : undefined;
 }
 
-const formatMessages = (messages: Message[]) => {
+const formatMessages = (messages: UIMessage[]) => {
   const formattedMessages = messages.map(
     (message) =>
-      `${message.role === "user" ? "Human" : "Assistant"}: ${message.content}`
+      `${message.role === "user" ? "Human" : "Assistant"}: ${getMessageContent(
+        message
+      )}`
   );
   return formattedMessages.join("/n");
 };
 
 export async function POST(req: Request) {
   try {
-    const { userId } = auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const { messages, fileKey, selectedModel, apiKeys, localChunks } =
+      await req.json();
 
-    const {
-      messages,
-      fileKey,
-      chatId,
-      messageCount,
-      isAdmin,
-      selectedModel,
-      apiKeys,
-    } = await req.json();
-
-    // Check if users running out of free messages
-    const userSettings = await getUserSettings();
-    if (
-      userSettings?.messageCount &&
-      userSettings?.freeMessages &&
-      userSettings?.messageCount >= userSettings?.freeMessages
-    ) {
-      return NextResponse.json(
-        { error: "Free messages limit reached" },
-        { status: 403 }
-      );
-    }
-
-    const currentMessageContent = messages[messages.length - 1].content;
+    const currentMessageContent = getMessageContent(
+      messages[messages.length - 1]
+    );
     const previousMessages = messages.slice(0, -1);
     const chatHistory = formatMessages(previousMessages);
 
@@ -69,74 +40,42 @@ export async function POST(req: Request) {
       logger.warn(`Invalid model received: ${selectedModel}. Using default.`);
     }
 
-    let count = 0;
-    let sources: { content: string; pageNumber: number }[] = [];
+    let sources: string = "";
 
     const streamingtextResponse = await retrieval({
       question: currentMessageContent,
       chatHistory,
       previousMessages,
       fileKey,
-      isAdmin,
       selectedModel: validatedModel,
       apiKeys,
+      localChunks,
       streamCallbacks: {
         handleRetrieverEnd: (documents) => {
-          sources = documents.map((d) => ({
-            content: d.pageContent,
-            pageNumber: d.metadata.pageNumber,
-          }));
+          sources = Buffer.from(
+            JSON.stringify(
+              documents.map((document) => document.metadata.pageNumber)
+            )
+          ).toString("base64");
         },
         handleLLMEnd: async (output) => {
-          count++;
-          if (count == 2) {
-            // save user message into db
-            await db.insert(_messages).values({
-              chatId,
-              content: currentMessageContent,
-              role: "user",
-            });
-            await db
-              .update(user_settings)
-              .set({
-                messageCount: messageCount + 1,
-              })
-              .where(eq(user_settings.userId, userId));
-
-            // save ai message into db
-            const completion = output.generations[0][0].text;
-            const messageId = await db
-              .insert(_messages)
-              .values({
-                chatId,
-                content: completion,
-                role: "system",
-                model: validatedModel,
-              })
-              .returning({
-                insertedId: _messages.id,
-              });
-            if (sources.length > 0) {
-              await db.insert(_sources).values({
-                messageId: messageId[0].insertedId,
-                chatId,
-                data: JSON.stringify(sources),
-              });
-            }
-          }
+          // In open source version, message storage is handled client-side
+          // No database operations needed here
+          logger.debug("Chat completion generated successfully");
         },
       },
     });
 
-    // Return a StreamingTextResponse, which can be consumed by the client
-    return streamingtextResponse;
-  } catch (err) {
-    Sentry.captureException("Error generating reply:", {
-      level: "error",
-      extra: {
-        error: err,
+    // Convert LangChain stream to AI SDK v5 format
+    return createUIMessageStreamResponse({
+      stream: toUIMessageStream(streamingtextResponse),
+      headers: {
+        "x-model-name": selectedModel || "",
+        "x-sources": sources,
       },
     });
+  } catch (err) {
+    logger.error("Error generating reply:", err);
     return NextResponse.json(
       { error: (err as Error).message },
       { status: 500 }

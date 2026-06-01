@@ -5,25 +5,20 @@ import { SettingsIcon } from "lucide-react";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from "../ui/dialog";
-import { TooltipIcon } from "../ui/tooltip";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Button } from "../ui/button";
-import ContactButton from "../contact-button";
 import { useAppStore, ApiKeys } from "@/store/app-store";
-import { useUser } from "@clerk/nextjs";
 import toast from "react-hot-toast";
 import { logger } from "@lib/logger";
 import { Providers } from "@types";
 
 export default function SettingsDialog() {
   const { apiKeys, setApiKeys } = useAppStore();
-  const { user } = useUser();
   const [formData, setFormData] = useState<ApiKeys>({});
   const [isOpen, setIsOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -43,11 +38,6 @@ export default function SettingsDialog() {
   };
 
   const handleSave = () => {
-    if (!user?.id) {
-      toast.error("User not authenticated");
-      return;
-    }
-
     setIsSaving(true);
     try {
       // Filter out empty strings and set only non-empty values
@@ -58,8 +48,8 @@ export default function SettingsDialog() {
         }
       });
 
-      setApiKeys(filteredApiKeys, user.id);
-      toast.success("API keys added successfully");
+      setApiKeys(filteredApiKeys);
+      toast.success("API keys saved successfully");
     } catch (error) {
       logger.error("Error saving API keys:", error);
       toast.error("Failed to save API keys");
@@ -72,23 +62,20 @@ export default function SettingsDialog() {
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger>
-        <TooltipIcon icon={SettingsIcon} tooltipText="Settings" />
+        <div className="gap-2 flex items-center border border-neutral-300 dark:border-neutral-700 hover:text-accent-foreground rounded-md px-4 py-2 hover:bg-accent">
+          <SettingsIcon size={16} />
+          Settings
+        </div>
       </DialogTrigger>
-      <DialogContent className="max-w-md">
+      <DialogContent className="min-w-[400px]">
         <DialogHeader>
           <DialogTitle>Settings</DialogTitle>
-          <DialogDescription>
-            Manage your settings and preferences.
-          </DialogDescription>
         </DialogHeader>
         <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-2 mb-2">
             <p className="text-sm font-medium">API Keys</p>
             <p className="text-sm text-muted-foreground">
-              You can input your API keys here to continue using the app without
-              the free credits. The keys will be encrypted and stored in your
-              browser&apos;s local storage,{" "}
-              <b>we don&apos;t store them in our servers</b>.
+              Add your AI provider API keys to use different models.
             </p>
           </div>
           <APIKeyInput
@@ -123,12 +110,6 @@ export default function SettingsDialog() {
             <Button onClick={handleSave} disabled={isSaving}>
               {isSaving ? "Saving..." : "Save"}
             </Button>
-            <div className="flex items-center justify-center">
-              <span className="text-sm text-neutral-700 dark:text-neutral-300">
-                Need help?
-              </span>
-              <ContactButton />
-            </div>
           </div>
         </div>
       </DialogContent>

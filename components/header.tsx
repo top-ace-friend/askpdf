@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useTheme } from "next-themes";
 import { Moon, Sun } from "lucide-react";
 import { Button } from "./ui/button";
+import SettingsDialog from "./dialogs/settings-dialog";
 
 const Header = () => {
   const { theme, setTheme } = useTheme();
@@ -28,14 +29,11 @@ const Header = () => {
       </Link>
 
       {/* Navigation and Actions */}
-      <div className="flex items-center space-x-4">
+      <div className="flex items-center space-x-2">
+        <SettingsDialog />
+
         {/* Theme Toggle */}
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={toggleTheme}
-          className="h-9 w-9"
-        >
+        <Button variant="outline" onClick={toggleTheme} className="gap-2">
           <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
           <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
           <span className="sr-only">Toggle theme</span>

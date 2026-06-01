@@ -1,24 +1,14 @@
-import { db } from "@/lib/db";
-import { messages, sources } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
   const { chatId } = await req.json();
 
-  const _messages = await db
-    .select()
-    .from(messages)
-    .where(eq(messages.chatId, chatId))
-    .orderBy(messages.createdAt);
-
-  let _sources = await db
-    .select()
-    .from(sources)
-    .where(eq(sources.chatId, chatId));
-
+  // In the open source version, messages are stored client-side
+  // This API endpoint is kept for compatibility but returns empty arrays
+  // since all data is managed in localStorage via the store
+  
   return NextResponse.json({
-    messages: _messages,
-    sources: _sources,
+    messages: [],
+    sources: [],
   });
 }

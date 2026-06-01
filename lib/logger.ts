@@ -1,7 +1,3 @@
-import * as Sentry from "@sentry/nextjs";
-
-const env = process.env.NODE_ENV;
-
 export interface Logger {
   info(message: string, extra?: any): void;
   error(message: string, extra?: any): void;
@@ -33,10 +29,6 @@ const log = (
   level: "info" | "error" | "warn" | "fatal" | "debug",
   extra?: any
 ) => {
-  if (env === "production") {
-    Sentry.logger[level](message, extra);
-  } else {
-    const consoleMethod = level === "fatal" ? "error" : level;
-    (console as any)[consoleMethod](message, extra || "");
-  }
+  const consoleMethod = level === "fatal" ? "error" : level;
+  (console as any)[consoleMethod](message, extra || "");
 };

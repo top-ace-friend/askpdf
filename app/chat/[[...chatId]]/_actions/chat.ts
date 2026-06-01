@@ -1,40 +1,8 @@
-import { auth } from "@clerk/nextjs/server";
-import { db } from "@lib/db";
-import { SafeChat, chats } from "@lib/db/schema";
-import { eq } from "drizzle-orm";
+import { LocalChat } from "@/store/app-store";
 
-export const getChats = async (): Promise<SafeChat[]> => {
-  try {
-    const { userId } = auth();
-    if (!userId) {
-      return [];
-    }
+// These functions are now client-side only since we use localStorage
+// Server actions are no longer needed for the open source version
 
-    const _chats = (
-      await db.select().from(chats).where(eq(chats.userId, userId))
-    ).map((d) => ({ ...d, createdAt: d.createdAt.toUTCString() }));
-    return _chats;
-  } catch (error) {
-    return [];
-  }
-};
-
-export const getChat = async (chatId: string): Promise<SafeChat | null> => {
-  try {
-    const { userId } = auth();
-    if (!userId) {
-      return null;
-    }
-
-    const chat = await db.select().from(chats).where(eq(chats.id, chatId));
-    return chat[0]
-      ? { ...chat[0], createdAt: chat[0].createdAt.toUTCString() }
-      : null;
-  } catch (error) {
-    return null;
-  }
-};
-
-export const getCurrentChat = (chats: SafeChat[], chatId: string) => {
-  return chatId ? chats.find((chat: SafeChat) => chat.id === chatId) : null;
+export const getCurrentChat = (chats: LocalChat[], chatId: string) => {
+  return chatId ? chats.find((chat: LocalChat) => chat.id === chatId) : null;
 };

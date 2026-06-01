@@ -1,221 +1,184 @@
 "use client";
 
-import axios from "axios";
-import { FunctionComponent, useEffect, useState } from "react";
-import { useChat } from "ai/react";
-import { useQuery } from "@tanstack/react-query";
+import { FunctionComponent, useState } from "react";
+import { useChat } from "@ai-sdk/react";
+import { DefaultChatTransport } from "ai";
+import {
+  getMessageContent,
+  getMessageSources,
+  getMessageModel,
+  getMessageKeywords,
+} from "@/lib/message-utils";
 import { Loader2, CornerDownRight } from "lucide-react";
-import { SafeChat, messages } from "@/lib/db/schema";
+import { LocalChat } from "@/store/app-store";
 import { Button } from "./ui/button";
 import MessageList from "./messages/message-list";
 import { Textarea } from "./ui/textarea";
-import LimitReachedDialog from "./dialogs/limit-reached-dialog";
 import ModelSelector from "./model-selector";
-import { useAppStore } from "@store/app-store";
-import { useDbEvents } from "@providers/db-events-provider";
+import { ApiKeys } from "@/types";
+import { useAppStore } from "@/store/app-store";
 import toast from "react-hot-toast";
 
 interface ChatInterfaceProps {
-  currentChat: SafeChat;
+  currentChat: LocalChat;
+  chatId: string;
+  selectedModel: string;
+  apiKeys: ApiKeys;
 }
 
 const ChatInterface: FunctionComponent<ChatInterfaceProps> = ({
   currentChat,
+  chatId,
+  selectedModel,
+  apiKeys,
 }) => {
-  const chatId = currentChat.id;
-  const { settings } = useDbEvents();
-  const {
-    isUsageRestricted,
-    messageCount,
-    isAdmin,
-    freeMessages,
-    setCurrentChatId,
-    updateMessageCount,
-    selectedModel,
-    apiKeys,
-  } = useAppStore();
+  const { addMessage, getMessages, getChunks } = useAppStore();
 
-  const messageLimit = freeMessages || Number(settings?.free_messages);
+  // Get chunks for the current file
+  const localChunks = getChunks(currentChat.fileKey);
 
-  const query = useQuery({
-    queryKey: ["chat", chatId],
-    queryFn: async () => {
-      const response = await axios.post("/api/get-messages", {
-        chatId,
-      });
-      return response.data;
-    },
-  });
+  const chatMessages = getMessages(chatId);
 
-  const [sourcesForMessages, setSourcesForMessages] = useState<
-    Record<string, any>
-  >({});
-  const [showLimitDialog, setShowLimitDialog] = useState(false);
-  const [isWaitingForResponse, setIsWaitingForResponse] = useState(false);
-  const [modelForMessages, setModelForMessages] = useState<
-    Record<string, string>
-  >({});
-
-  const { messages, input, isLoading, handleInputChange, handleSubmit } =
-    useChat({
+  const { messages, sendMessage, status } = useChat({
+    transport: new DefaultChatTransport({
+      api: "/api/chat",
       body: {
         fileKey: currentChat.fileKey,
         chatId,
-        messageCount,
-        isAdmin,
         selectedModel,
         apiKeys,
+        localChunks,
       },
-      initialMessages: query.data?.messages || [],
-      onResponse: (response) => {
-        updateMessageCount("increase", 1);
+    }),
+    messages:
+      chatMessages.map((msg: any) => ({
+        id: msg.id,
+        parts: [
+          {
+            type: "text",
+            text: msg.content,
+          },
+        ],
+        role: msg.role as "user" | "assistant",
+      })) || [],
+    onFinish: (result) => {
+      const messageWithContent = {
+        id: result.message.id,
+        content: getMessageContent(result.message),
+        role: result.message.role as "user" | "assistant",
+        createdAt: new Date().toISOString(),
+        chatId: chatId,
+      };
 
-        const sourcesHeader = response.headers.get("x-sources");
-        const sources = sourcesHeader
-          ? JSON.parse(Buffer.from(sourcesHeader, "base64").toString("utf8"))
-          : [];
-        const messageIndexHeader = response.headers.get("x-message-index");
-        const modelHeader = response.headers.get("x-model");
-        if (messageIndexHeader) {
-          if (sources.length) {
-            setSourcesForMessages({
-              ...sourcesForMessages,
-              [messageIndexHeader]: sources,
-            });
-          }
+      // Save to store
+      addMessage(messageWithContent);
 
-          // Store the selected model for the new AI message
-          if (modelHeader) {
-            setModelForMessages((prev) => ({
-              ...prev,
-              [messageIndexHeader]: modelHeader,
-            }));
-          }
-        }
-
-        setIsWaitingForResponse(false);
-      },
-      onError: (error) => {
-        const message = JSON.parse(error.message);
-        if (typeof message.error === "string") {
-          toast.error(message.error, {
-            position: "bottom-right",
-            duration: 5000,
-          });
-        } else {
-          toast.error("Something went wrong", {
-            position: "bottom-right",
-            duration: 5000,
-          });
-        }
-      },
-    });
-
-  useEffect(() => {
-    setCurrentChatId(chatId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Extract model information from database messages
-  useEffect(() => {
-    if (query.data?.messages) {
-      const modelMap: Record<string, string> = {};
-      query.data.messages.forEach((msg: any) => {
-        if (msg.model) {
-          modelMap[msg.id] = msg.model;
-        }
+      // Extract custom data from message parts (now embedded directly in the message)
+      const sources = getMessageSources(result.message);
+      const model = getMessageModel(result.message);
+      const keywords = getMessageKeywords(result.message);
+    },
+    onError: (error) => {
+      toast.error(error.message, {
+        position: "bottom-right",
+        duration: 5000,
       });
-      setModelForMessages(modelMap);
-    }
-  }, [query.data?.messages]);
+    },
+  });
 
-  // useEffect(() => {
-  //   if (query.data?.sources) {
-  //     const msgSources = query.data?.sources
-  //       ? (query.data?.sources as SafeSource[]).reduce(
-  //           (a, v) => ({ ...a, [v.messageId]: v.data }),
-  //           {}
-  //         )
-  //       : {};
-  //     setSourcesForMessages(msgSources);
-  //   }
-  // }, [query.data?.sources]);
+  // Handle input state manually
+  const [input, setInput] = useState("");
 
-  const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    if (isUsageRestricted && messageCount === messageLimit) {
-      e.preventDefault();
-      setShowLimitDialog(true);
-      return;
-    }
-    setIsWaitingForResponse(true);
-    handleSubmit(e);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    const userInput = input.trim();
+    setInput("");
+
+    if (!userInput || status === "streaming") return;
+
+    const userMessage = {
+      id: Date.now().toString(),
+      content: userInput,
+      role: "user" as const,
+      createdAt: new Date().toISOString(),
+      chatId: chatId,
+    };
+
+    // Save user message to store immediately
+    addMessage(userMessage);
+
+    // Send message to API
+    await sendMessage({
+      parts: [
+        {
+          type: "text",
+          text: input.trim(),
+        },
+      ],
+      role: "user",
+    });
   };
 
-  const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      onSubmit(e as any);
-    }
-  };
+  const isLoading = status === "submitted" || status === "streaming";
+  const isWaitingForResponse = status === "submitted";
+  const isResponding = status === "streaming";
 
   return (
-    <>
-      <div className="relative w-full h-[calc(100vh-72px)] flex flex-col justify-between bg-neutral-50 dark:bg-neutral-900 rounded-md">
-        <MessageList
-          messages={messages}
-          isLoading={query.isLoading}
-          isWaitingForResponse={isWaitingForResponse}
-          isResponding={isLoading}
-          // sources={sourcesForMessages}
-          models={modelForMessages}
-          chatId={chatId}
-          pdfName={currentChat.pdfName}
-        />
-        <form
-          className={`flex gap-3 bg-neutral-50 dark:bg-neutral-900 px-3 pt-1 pb-5`}
-          onSubmit={onSubmit}
-        >
-          {/* Chat input container */}
-          <div className="flex flex-col items-end w-full border border-neutral-300 dark:border-neutral-700 rounded-lg">
-            <Textarea
-              value={input}
-              placeholder="Ask any question..."
-              rows={2}
-              disabled={isLoading}
-              onChange={handleInputChange}
-              onKeyDown={onKeyDown}
-              className="pt-2.5 border-none resize-none bg-transparent"
-            />
-            {/* Bottom row with model selector and send button */}
-            <div className="flex items-center justify-between w-full pb-2">
-              {/* Model selector on the left */}
-              <ModelSelector className="ml-3" />
-
-              {/* Send button on the right */}
-              <Button
-                type="submit"
-                variant="ghost"
-                className="w-fit gap-1 font-light text-[12px] text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-400 hover:bg-transparent"
-              >
-                {isLoading ? (
-                  <Loader2 size={16} className="animate-spin" />
-                ) : (
-                  <>
-                    <CornerDownRight size={16} />
-                    Enter to send
-                  </>
-                )}
-              </Button>
-            </div>
-          </div>
-        </form>
-      </div>
-
-      <LimitReachedDialog
-        type="message"
-        open={showLimitDialog}
-        setOpen={setShowLimitDialog}
+    <div className="relative w-full h-[calc(100vh-72px)] flex flex-col justify-between bg-neutral-50 dark:bg-neutral-900 rounded-md">
+      <MessageList
+        messages={messages}
+        chatId={chatId}
+        isLoading={false}
+        isWaitingForResponse={isWaitingForResponse}
+        isResponding={isResponding}
+        pdfName={currentChat.pdfName}
       />
-    </>
+
+      <form
+        className={`flex gap-3 bg-neutral-50 dark:bg-neutral-900 px-3 pt-1 pb-5`}
+        onSubmit={handleSubmit}
+      >
+        {/* Chat input container */}
+        <div className="flex flex-col items-end w-full border border-neutral-300 dark:border-neutral-700 rounded-lg">
+          <Textarea
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder="Ask any question..."
+            rows={2}
+            className="pt-2.5 border-none resize-none bg-transparent"
+            disabled={isLoading}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                handleSubmit(e);
+              }
+            }}
+          />
+          {/* Bottom row with model selector and send button */}
+          <div className="flex items-center justify-between w-full pb-2">
+            {/* Model selector on the left */}
+            <ModelSelector className="ml-3" />
+
+            {/* Send button on the right */}
+            <Button
+              type="submit"
+              variant="ghost"
+              className="w-fit gap-1 font-light text-[12px] text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-400 hover:bg-transparent"
+            >
+              {isLoading ? (
+                <Loader2 size={16} className="animate-spin" />
+              ) : (
+                <>
+                  <CornerDownRight size={16} />
+                  Enter to send
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
+      </form>
+    </div>
   );
 };
 

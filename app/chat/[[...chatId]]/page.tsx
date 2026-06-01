@@ -1,28 +1,12 @@
-import ChatFile from "@/components/chat-file";
-import ChatInterface from "@/components/chat-interface";
-import PdfViewer from "@/components/pdf-viewer";
-import { getChat } from "./_actions/chat";
-
+import ChatClient from "./chat-client";
 interface ChatPageProps {
-  params: {
+  params: Promise<{
     chatId: string[];
-  };
+  }>;
 }
 
 export default async function ChatPage({ params }: ChatPageProps) {
-  const { chatId } = await params;
-  const currentChat = chatId?.[0] ? await getChat(chatId[0]) : null;
+  const chatId = (await params).chatId?.[0] || "";
 
-  return (
-    <>
-      {currentChat ? (
-        <>
-          <PdfViewer pdfUrl={currentChat.pdfUrl} />
-          <ChatInterface currentChat={currentChat} />
-        </>
-      ) : (
-        <ChatFile />
-      )}
-    </>
-  );
+  return <ChatClient chatId={chatId} />;
 }

@@ -1,5 +1,4 @@
 import { Pinecone, PineconeRecord } from "@pinecone-database/pinecone";
-import { downloadFromS3 } from "./s3-server";
 import { PDFLoader } from "@langchain/community/document_loaders/fs/pdf";
 import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
 import md5 from "md5";
@@ -10,6 +9,10 @@ import { logger } from "./logger";
 let pinecone: Pinecone | null = null;
 
 export const getPineconeClient = () => {
+  if (!process.env.PINECONE_API_KEY) {
+    throw new Error("Pinecone API key not configured");
+  }
+
   if (!pinecone) {
     pinecone = new Pinecone({
       apiKey: process.env.PINECONE_API_KEY!,
@@ -37,56 +40,21 @@ type RecordMetadata = {
 };
 
 export async function loadS3IntoPinecone(fileKey: string) {
+  // Check if Pinecone is configured
+  if (!process.env.PINECONE_API_KEY || !process.env.PINECONE_INDEX_NAME) {
+    logger.warn(
+      "Pinecone not configured, skipping vector storage for file:",
+      fileKey
+    );
+    return;
+  }
+
   try {
-    // 1. obtain the pdf
-    logger.debug("Downloading s3 into file system");
-    const fileName = await downloadFromS3(fileKey);
-    if (!fileName) {
-      throw new Error("Could not download from s3: " + fileKey);
-    }
-
-    const loader = new PDFLoader(fileName);
-    const pages = (await loader.load()) as PDFPage[];
-
-    // 2. Split and segment the pdf into smaller documents
-    // Improved chunking strategy for better context preservation
-    const textSplitter = new RecursiveCharacterTextSplitter({
-      chunkSize: 1000, // Larger chunks for better context
-      chunkOverlap: 200, // More overlap to preserve context across chunks
-      separators: ["\n\n", "\n", ".", "!", "?", ";"], // More granular separators
-      keepSeparator: true, // Keep separators to maintain text structure
-    });
-
-    let documents = await textSplitter.splitDocuments(pages);
-    documents = documents.map((doc) => ({
-      ...doc,
-      metadata: {
-        ...doc.metadata,
-        fileKey: convertToAscii(fileKey),
-      },
-    }));
-
-    // 3. vectorize and embed individual documents
-    const vectorPromises = await Promise.all(
-      documents.flat().map((d) => embedDocument(d as PDFPage, fileKey))
-    );
-
-    // Filter out null values (skipped short chunks)
-    const vectors = vectorPromises.filter(
-      (vector): vector is PineconeRecord<RecordMetadata> => vector !== null
-    );
-
-    // 4. upload to pinecone
-    const client = await getPineconeClient();
-    const pineconeIndex = client.index("askpdf").namespace(fileKey);
-
-    logger.debug("Inserting vectors into pinecone");
-
-    await pineconeIndex.upsert(vectors);
-
-    logger.debug("Success inserting vectors to pinecone");
+    // In open source version, we don't process files through Pinecone by default
+    logger.debug("Pinecone loading skipped in open source version");
+    return;
   } catch (err) {
-    logger.error("Error inserting vectors to pinecone:", {
+    logger.error("Error in Pinecone processing:", {
       fileKey,
       error: err,
     });
@@ -94,37 +62,16 @@ export async function loadS3IntoPinecone(fileKey: string) {
   }
 }
 
+// This function is kept for compatibility but not used in the open source version
 async function embedDocument(
   doc: PDFPage,
   fileKey: string
 ): Promise<PineconeRecord<RecordMetadata> | null> {
-  // Clean and preprocess text for better embeddings
-  const cleanedText = doc.pageContent
-    .replace(/\s+/g, " ") // Normalize whitespace
-    .replace(/[^\w\s\.\,\!\?\;\:]/g, "") // Remove special characters that don't add meaning
-    .trim();
-
-  // Skip very short chunks that don't have meaningful content
-  if (cleanedText.length < 50) {
-    logger.debug(`Skipping short chunk: ${cleanedText.substring(0, 30)}...`);
-    return null;
-  }
-
-  const embeddings = await getEmbeddings(cleanedText);
-  const hash = md5(cleanedText);
-
-  return {
-    id: fileKey + "#" + hash,
-    values: embeddings,
-    metadata: {
-      text: truncateStringByByte(cleanedText, 36000),
-      pageNumber: doc.metadata.loc?.pageNumber || 0,
-      fileKey: convertToAscii(fileKey),
-      chunkLength: cleanedText.length,
-      // Add chunk summary for better filtering
-      preview: cleanedText.substring(0, 100),
-    },
-  };
+  // This function would be used if Pinecone processing was enabled
+  logger.debug(
+    "embedDocument called but not processing in open source version"
+  );
+  return null;
 }
 
 export function truncateStringByByte(str: string, bytes: number) {
@@ -133,9 +80,20 @@ export function truncateStringByByte(str: string, bytes: number) {
 }
 
 export async function deleteVectors(fileKey: string) {
+  // Check if Pinecone is configured
+  if (!process.env.PINECONE_API_KEY || !process.env.PINECONE_INDEX_NAME) {
+    logger.warn(
+      "Pinecone not configured, skipping vector deletion for file:",
+      fileKey
+    );
+    return;
+  }
+
   try {
     const client = await getPineconeClient();
-    const index = client.index("askpdf").namespace(fileKey);
+    const index = client
+      .index(process.env.PINECONE_INDEX_NAME!)
+      .namespace(fileKey);
     const prefix = fileKey + "#";
 
     const pageOneList = await index.listPaginated({ prefix });

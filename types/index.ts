@@ -34,3 +34,16 @@ export interface ModelOption {
   credits: number;
   modelType: ModelTypes;
 }
+
+export interface DocumentChunk {
+  id: string;
+  fileKey: string;
+  content: string;
+  pageNumber: number;
+  chunkIndex: number;
+}
+
+export interface Source {
+  content: string;
+  pageNumber: number;
+}

@@ -4,16 +4,19 @@ import { Loader2 } from "lucide-react";
 import { FunctionComponent, useEffect, useState } from "react";
 import UserMessage from "./user-message";
 import AssistantMessage from "./assistant-message";
-import { Message } from "ai";
+import { UIMessage } from "ai";
+import {
+  getMessageContent,
+  getMessageSources,
+  getMessageModel,
+} from "@/lib/message-utils";
 
 interface MessageListProps {
-  messages: Message[];
+  messages: UIMessage[];
   chatId: string;
   isLoading: boolean;
   isWaitingForResponse: boolean;
   isResponding: boolean;
-  sources?: Record<string, any>;
-  models?: Record<string, string>;
   pdfName?: string;
 }
 
@@ -22,8 +25,6 @@ const MessageList: FunctionComponent<MessageListProps> = ({
   isLoading,
   isWaitingForResponse = false,
   isResponding = false,
-  sources,
-  models,
   pdfName,
 }) => {
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
@@ -57,26 +58,18 @@ const MessageList: FunctionComponent<MessageListProps> = ({
     );
   }
 
-  // in markdown format
-  const welcomeMessage = `
-  Your file **${pdfName?.split(".")[0]}** has been successfully processed.
-  
-  I can help you with:
-  - Answering questions about the document content
-  - Summarizing the whole document or specific sections
-  - Finding relevant information quickly
-  - Explaining complex concepts from the document
-
-  Let's dive in!
-  `;
-
   // Welcome message component
   const WelcomeMessage = () => (
     <AssistantMessage
       message={{
         id: "welcome-message",
-        content: welcomeMessage,
         role: "assistant",
+        parts: [
+          {
+            type: "text",
+            text: "Remember to add the API keys in the settings.\n\nGet started by asking a question about your document.",
+          },
+        ],
       }}
       copiedMessageId={null}
     />
@@ -103,8 +96,8 @@ const MessageList: FunctionComponent<MessageListProps> = ({
               message={m}
               copiedMessageId={copiedMessageId}
               onCopy={handleCopy}
-              sources={sources && (sources[m.id] ?? sources[i])}
-              model={models && (models[m.id] ?? models[i])}
+              sources={getMessageSources(m)}
+              model={getMessageModel(m)}
               isResponding={isResponding && i === messages.length - 1}
             />
           )}
